@@ -1,0 +1,9 @@
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/App.java
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/changeclassifier/Preprocessor.java
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/changeclassifier/ChangeAnalyzer.java
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/models/Change.java
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/changeclassifier/PorterStemmer.java
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/models/ChangeTag.java
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/changeclassifier/ChangeDetector.java
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/changeclassifier/ChangeClassifier.java
+/home/urmikl18/Documents/Bachelor/change_classifier/src/main/java/ps/models/PositionedDiff.java
