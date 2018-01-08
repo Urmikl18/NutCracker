@@ -12,25 +12,25 @@ import ps.models.ChangeTag;
 
 public class App {
 
-    public static final String FILE1 = "src/main/resources/benchmark/f1_1.txt";
-    public static final String FILE2 = "src/main/resources/benchmark/f1_2.txt";
+    public static final String FILE1 = "src/main/resources/benchmark/f2_1.txt";
+    public static final String FILE2 = "src/main/resources/benchmark/f2_2.txt";
 
     public static String readFile(String path) throws IOException {
         Path p = Paths.get(path);
         List<String> lines = Files.readAllLines(p);
         String content = "";
-        for (String line : lines) {
-            content += line + "\n";
+        for (int i = 0; i < lines.size() - 1; ++i) {
+            content += lines.get(i) + "\n";
         }
-        return content;
+        return content + lines.get(lines.size() - 1);
     }
 
     public static void main(String[] args) throws IOException {
         String text1 = "";
         String text2 = "";
         try {
-            text1 = "~PS~" + readFile(FILE1) + "~PS~";
-            text2 = "~PS~" + readFile(FILE2) + "~PS~";
+            text1 = "~PS~\n" + readFile(FILE1) + "\n~PS~";
+            text2 = "~PS~\n" + readFile(FILE2) + "\n~PS~";
         } catch (Exception err) {
             System.out.println("Could not read files");
         }
