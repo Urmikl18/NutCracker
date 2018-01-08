@@ -4,13 +4,13 @@ import java.util.Map;
 
 import ps.models.*;
 
-public class ChangeClassifier {
+public class NutCracker {
     private ChangeDetector cd;
     private ChangeAnalyzer ca;
 
-    public static final ChangeClassifier INSTANCE = new ChangeClassifier();
+    public static final NutCracker INSTANCE = new NutCracker();
 
-    private ChangeClassifier() {
+    private NutCracker() {
         this.cd = ChangeDetector.INSTANCE;
         this.ca = ChangeAnalyzer.INSTANCE;
     }

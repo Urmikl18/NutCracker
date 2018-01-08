@@ -7,7 +7,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
-import ps.changeclassifier.ChangeClassifier;
+import ps.changeclassifier.NutCracker;
 import ps.models.ChangeTag;
 
 public class App {
@@ -29,13 +29,13 @@ public class App {
         String text1 = "";
         String text2 = "";
         try {
-            text1 = readFile(FILE1);
-            text2 = readFile(FILE2);
+            text1 = "~PS~" + readFile(FILE1) + "~PS~";
+            text2 = "~PS~" + readFile(FILE2) + "~PS~";
         } catch (Exception err) {
             System.out.println("Could not read files");
         }
 
-        ChangeClassifier cc = ChangeClassifier.INSTANCE;
+        NutCracker cc = NutCracker.INSTANCE;
         ChangeTag[] changes_tag = cc.getChangeClassification(text1, text2);
         Arrays.stream(changes_tag).forEach(c_t -> System.out.println(c_t));
     }
