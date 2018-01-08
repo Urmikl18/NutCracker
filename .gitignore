@@ -1,6 +1,1 @@
-.settings/
-.vscode/
-target/
-.classpath
-.project
-pom.xml
+./pom.xml
