@@ -102,7 +102,7 @@ public class ChangeDetector {
             changes[i] = new Change(before, after, first1, first2);
         }
 
-        if (changes[0].getAfter().equals("") && changes[1].getBefore().equals("")) {
+        if (changes[0].getAfter().equals("") && changes[0].getBefore().equals("")) {
             if (changes[changes.length - 1].getBefore().equals("")
                     && changes[changes.length - 1].getAfter().equals("")) {
                 return Arrays.copyOfRange(changes, 1, changes.length - 1);

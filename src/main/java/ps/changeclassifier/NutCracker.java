@@ -20,8 +20,8 @@ public class NutCracker {
         Preprocessor p = Preprocessor.INSTANCE;
         Map<String, Double> topic = p.calculateTopic(text1);
         // 1. Detect Changes
-        text1 = "passport of spain";
-        text2 = "spanish passport";
+        text1 = "One change. Second change";
+        text2 = "One change. Below";
         Change[] changes = cd.getChanges(text1, text2);
         // 2. Analyze Changes
         ChangeTag[] class_changes = ca.getClassification(changes);
