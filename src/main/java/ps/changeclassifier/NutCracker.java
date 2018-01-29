@@ -19,15 +19,13 @@ public class NutCracker {
         // 0. Preprocess
         Preprocessor p = Preprocessor.INSTANCE;
         Map<String, Double> topic = p.calculateTopic(text1);
-        System.out.println("Preprocessing done");
         // 1. Detect Changes
+        text1 = "passport of spain";
+        text2 = "spanish passport";
         Change[] changes = cd.getChanges(text1, text2);
-        System.out.println("Changes detection done");
         // 2. Analyze Changes
         ChangeTag[] class_changes = ca.getClassification(changes);
-        System.out.println("Changes analysis done");
         // 3. Return Classification
-        System.out.println("Change classification done");
         return class_changes;
     }
 

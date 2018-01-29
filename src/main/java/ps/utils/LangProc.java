@@ -22,8 +22,7 @@ public class LangProc {
         public static final String QUOTE1 = "\\[([A-Z]*?)([1-9][0-9]*?)\\]";
         public static final String QUOTE2 = "(" + author + additional + "*" + year + ")";
         public static final String FORMAT_CHAR = "(\\s)+";
-        public static final String TRIM_START = "^(\\.|,|!|\\?)";
-        public static final String TRIM_END = "(\\.|,|!|\\?)$";
+        public static final String WORD_LIMIT = "(\\w|'|-)*";
     }
 
     public static boolean isNumber(String str) {
