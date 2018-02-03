@@ -15,9 +15,9 @@ public class AppTest {
             "src/main/resources/benchmark/f4_2.txt", "src/main/resources/benchmark/f5_1.txt",
             "src/main/resources/benchmark/f5_2.txt" };
 
-    private static final Tag[][] predicted = { { Tag.FORMATTING, Tag.RELATED_WORDS, Tag.SPELLING, Tag.RELATED_IDEA,
-            Tag.RELATED_WORDS, Tag.CITATION, Tag.RELATED_WORDS, Tag.CITATION, Tag.CITATION, Tag.CITATION, Tag.CITATION,
-            Tag.CITATION, Tag.RELATED_IDEA, Tag.RELATED_IDEA, Tag.RELATED_IDEA }, { Tag.RELATED_WORDS } };
+    private static final Tag[][] predicted = { { Tag.FORMATTING, Tag.RELATED_TERM, Tag.SPELLING, Tag.RELATED_IDEA,
+            Tag.RELATED_TERM, Tag.CITATION, Tag.RELATED_TERM, Tag.CITATION, Tag.CITATION, Tag.CITATION, Tag.CITATION,
+            Tag.CITATION, Tag.RELATED_IDEA, Tag.RELATED_IDEA, Tag.RELATED_IDEA }, { Tag.RELATED_TERM } };
 
     public static void runTest(int testNum) {
         NutCracker nc = NutCracker.INSTANCE;

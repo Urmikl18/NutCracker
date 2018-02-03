@@ -57,13 +57,13 @@ public class ChangeAnalyzer {
             return Tag.CITATION;
         }
         if (unclassified) {
-            return Tag.IMPOSSIBLE_TO_CLASSIFY;
+            return Tag.UNDEFINED;
         }
         if (spelling) {
             return Tag.SPELLING;
         }
         if (related_word) {
-            return Tag.RELATED_WORDS;
+            return Tag.RELATED_TERM;
         }
         return Tag.UNDEFINED;
     }
