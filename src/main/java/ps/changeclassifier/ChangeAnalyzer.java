@@ -2,10 +2,13 @@ package ps.changeclassifier;
 
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.Set;
 
+import edu.cmu.lti.jawjaw.JAWJAW;
+import edu.cmu.lti.jawjaw.pobj.POS;
 import edu.cmu.lti.lexical_db.ILexicalDatabase;
 import edu.cmu.lti.lexical_db.NictWordNet;
-import edu.cmu.lti.ws4j.impl.LeacockChodorow;
+import edu.cmu.lti.ws4j.impl.WuPalmer;
 import edu.cmu.lti.ws4j.util.WS4JConfiguration;
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Diff;
@@ -44,37 +47,33 @@ public class ChangeAnalyzer {
             filt_diff[i] = (Diff) tmp[i];
         }
 
-        boolean unclassified = isImpossibleToClassify(filt_diff);
-        boolean formatting = isFormatting(filt_diff);
         boolean citation = isCitation(change.getBefore(), change.getAfter());
-        boolean spelling = isSpelling(change.getBefore(), change.getAfter());
-        boolean related_word = isRelatedWord(change.getBefore(), change.getAfter());
-
-        if (formatting) {
-            return Tag.FORMATTING;
-        }
         if (citation) {
             return Tag.CITATION;
         }
-        if (unclassified) {
-            return Tag.UNDEFINED;
-        }
+
+        boolean spelling = isSpelling(change.getBefore(), change.getAfter());
         if (spelling) {
             return Tag.SPELLING;
         }
-        if (related_word) {
+
+        boolean formatting = isFormatting(filt_diff);
+        if (formatting) {
+            return Tag.FORMATTING;
+        }
+
+        int sub_sim = substitutionSimilarity(change.getBefore(), change.getAfter());
+        switch (sub_sim) {
+        case -1:
+            break;
+        case 0:
+            return Tag.UNRELATED_TERM;
+        case 1:
             return Tag.RELATED_TERM;
+        case 2:
+            return Tag.SYNONYM;
         }
         return Tag.UNDEFINED;
-    }
-
-    private boolean isImpossibleToClassify(Diff[] diffs) {
-        for (Diff d : diffs) {
-            if (!LangProc.isNumber(d.text)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private boolean isFormatting(Diff[] diffs) {
@@ -88,6 +87,7 @@ public class ChangeAnalyzer {
 
     private boolean isCitation(String before, String after) {
         if (LangProc.isQuote(before) && LangProc.isQuote(after)) {
+            // Double checking, but should never happen
             if (!before.equals(after)) {
                 return true;
             }
@@ -97,15 +97,16 @@ public class ChangeAnalyzer {
 
     private boolean isSpelling(String before, String after) {
         if (LangProc.isWord(before) && LangProc.isWord(after)) {
-            boolean indict = false;
+            boolean misspelling = false;
+            boolean correct = false;
             try {
-                indict = LangProc.inDictionary(before);
-
+                misspelling = !LangProc.inDictionary(before);
+                correct = LangProc.inDictionary(after);
             } catch (IOException e) {
                 System.out.println("Unable to open the WordNet dictionary");
                 return false;
             }
-            if (!indict) {
+            if (misspelling && correct) {
                 LinkedList<Diff> diff = this.dmp.diff_main(before, after);
                 this.dmp.diff_cleanupSemantic(diff);
                 if (this.dmp.diff_levenshtein(diff) <= 2) {
@@ -116,15 +117,28 @@ public class ChangeAnalyzer {
         return false;
     }
 
-    private boolean isRelatedWord(String before, String after) {
+    private int substitutionSimilarity(String before, String after) {
         if (LangProc.isWord(before) && LangProc.isWord(after)) {
-            WS4JConfiguration.getInstance().setMFS(true);
-            double sim = new LeacockChodorow(db).calcRelatednessOfWords(before, after);
-            if (sim > 1) {
-                return true;
+            Set<String> s = JAWJAW.findSynonyms(before, POS.a);
+            s.addAll(JAWJAW.findSynonyms(before, POS.n));
+            s.addAll(JAWJAW.findSynonyms(before, POS.r));
+            s.addAll(JAWJAW.findSynonyms(before, POS.v));
+
+            for (String str : s) {
+                if (str.equals(after)) {
+                    return 2;
+                }
+            }
+
+            WS4JConfiguration.getInstance().setMFS(false);
+            double sim = new WuPalmer(db).calcRelatednessOfWords(before, after);
+            if (sim > 0.5) {
+                return 1;
+            } else if (sim > 0) {
+                return 0;
             }
         }
-        return false;
+        return -1;
     }
 
 }

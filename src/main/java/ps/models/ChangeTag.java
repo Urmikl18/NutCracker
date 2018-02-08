@@ -23,6 +23,7 @@ public class ChangeTag {
      * <li>CITATION: changes in citations.</li>
      * <li>SPELLING: spelling correction.</li>
      * <li>GRAMMAR: grammar correction.</li>
+     * <li>SYNONYM: individual words were replaced, and they are interchangeable.</li>
      * <li>RELATED_TERM: replaced word has a similar meaning.</li>
      * <li>UNRELATED_TERM: individual words were replaced, but they are not related.</li>
      * <li>REPHRASING: rephrasing sentences.</li>
@@ -34,7 +35,7 @@ public class ChangeTag {
     public static enum Tag {
         FORMATTING, CITATION, SPELLING, GRAMMAR,
 
-        RELATED_TERM, UNRELATED_TERM,
+        RELATED_TERM, UNRELATED_TERM, SYNONYM,
 
         REPHRASING, RELATED_IDEA, NOVEL_IDEA,
 

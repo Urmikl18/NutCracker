@@ -35,12 +35,12 @@ public class App {
         String text2 = "";
 
         if (args[0].equals("-t")) {
-            text1 = "~PS~\n" + args[1] + "\n~PS~";
-            text2 = "~PS~\n" + args[2] + "\n~PS~";
+            text1 = args[1];
+            text2 = args[2];
         } else if (args[0].equals("-f")) {
             try {
-                text1 = "~PS~\n" + readFile(args[1]) + "\n~PS~";
-                text2 = "~PS~\n" + readFile(args[2]) + "\n~PS~";
+                text1 = readFile(args[1]);
+                text2 = readFile(args[2]);
             } catch (Exception err) {
                 System.out.println("Could not read files");
                 return;

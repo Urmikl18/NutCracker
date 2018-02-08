@@ -1,10 +1,9 @@
 package ps.changeclassifier;
 
-import java.util.ArrayList;
+import java.text.BreakIterator;
 import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Locale;
 
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Diff;
@@ -44,8 +43,7 @@ public class ChangeDetector {
         PositionedDiff[] pos_diffs = getDiffPositions(diffs);
         Change[] before_after = getChangedText(pos_diffs, text1, text2);
         Change[] ext_changes = extendChanges(before_after, text1, text2);
-        Change[] group_changes = groupChanges(ext_changes, text1, text2);
-        return group_changes;
+        return ext_changes;
     }
 
     /*
@@ -129,109 +127,30 @@ public class ChangeDetector {
     */
     private Change[] extendChanges(Change[] diffs, String text1, String text2) {
         Change[] res = diffs.clone();
-        int[] ind_ext = new int[2];
-        String ext_text = "";
+        BreakIterator bi = BreakIterator.getWordInstance(new Locale("en"));
+        int tmp = 0, start = 0, end = 0;
+        int pos1 = 0, pos2 = 0;
+        String before = "", after = "";
+        for (int i = 0; i < diffs.length; ++i) {
+            bi.setText(text1);
+            tmp = bi.preceding(diffs[i].getPos1());
+            start = tmp == BreakIterator.DONE ? 0 : tmp;
+            tmp = bi.following(diffs[i].getPos1() + diffs[i].getBefore().length());
+            end = tmp == BreakIterator.DONE ? text1.length() : tmp;
 
-        for (int i = 0; i < res.length; ++i) {
-            ind_ext = getExtendedPosition(text1, res[i].getBefore(), res[i].getPos1(),
-                    res[i].getPos1() + res[i].getBefore().length());
-            ext_text = text1.substring(ind_ext[0], ind_ext[1]);
-            res[i].setBefore(ext_text);
-            res[i].setPos1(ind_ext[0]);
+            pos1 = start;
+            before = text1.substring(start, end).replaceAll(Patterns.TRIM_START, "");
 
-            ind_ext = getExtendedPosition(text2, res[i].getAfter(), res[i].getPos2(),
-                    res[i].getPos2() + res[i].getAfter().length());
-            ext_text = text2.substring(ind_ext[0], ind_ext[1]);
-            res[i].setAfter(ext_text);
-            res[i].setPos2(ind_ext[0]);
+            bi.setText(text2);
+            tmp = bi.preceding(diffs[i].getPos2());
+            start = tmp == BreakIterator.DONE ? 0 : tmp;
+            tmp = bi.following(diffs[i].getPos2() + diffs[i].getAfter().length());
+            end = tmp == BreakIterator.DONE ? text2.length() : tmp;
+
+            pos2 = start;
+            after = text2.substring(start, end).replaceAll(Patterns.TRIM_START, "");
+            res[i] = new Change(before, after, pos1, pos2);
         }
         return res;
-    }
-
-    /*
-        Returns positions in text to which change has to be extended.
-    */
-    private int[] getExtendedPosition(String text, String match, int refPos1, int refPos2) {
-
-        int start = refPos1 - 20;
-        start = start < 0 ? 0 : start;
-        int end = refPos2 + 20;
-        end = end > text.length() ? text.length() : end;
-        String test_seq = text.substring(start, end);
-
-        // Detect the first type of citation
-        Pattern p1 = Pattern.compile(Patterns.QUOTE1);
-        Matcher m1 = p1.matcher(test_seq);
-
-        int ind_left = 0;
-        int ind_right = 0;
-        while (m1.find()) {
-            ind_left = m1.start();
-            ind_right = m1.end();
-            if (refPos1 - start >= ind_left && refPos2 - start <= ind_right) {
-                return new int[] { start + ind_left, start + ind_right };
-            }
-        }
-
-        // Detect the second type of citation
-        Pattern p2 = Pattern.compile(Patterns.QUOTE2);
-        Matcher m2 = p2.matcher(test_seq);
-
-        while (m2.find()) {
-            ind_left = m2.start();
-            ind_right = m2.end();
-            if (refPos1 - start >= ind_left && refPos2 - start <= ind_right) {
-                return new int[] { start + ind_left, start + ind_right };
-            }
-        }
-
-        // Detect everything else
-        String regex = match.equals("") ? "(\\w|'|-)+" : Patterns.WORD_LIMIT + match + Patterns.WORD_LIMIT;
-        Pattern p3 = Pattern.compile(regex);
-        Matcher m3 = p3.matcher(test_seq);
-
-        while (m3.find()) {
-            ind_left = m3.start();
-            ind_right = m3.end();
-            if (refPos1 - start >= ind_left && refPos2 - start <= ind_right) {
-                return new int[] { start + ind_left, start + ind_right };
-            }
-        }
-
-        return new int[] { ind_left, ind_right };
-    }
-
-    private Change[] groupChanges(Change[] changes, String text1, String text2) {
-        ArrayList<Change> result = new ArrayList<>();
-        ArrayList<Change> tmp = new ArrayList<>();
-        for (Change c : changes) {
-            tmp.add(c);
-        }
-        int intercount = 1;
-        while (intercount > 0) {
-            intercount = 0;
-            result = (ArrayList<Change>) tmp.clone();
-            tmp.clear();
-            for (int i = 0; i < result.size() - 1; ++i) {
-                Change c1 = result.get(i);
-                Change c2 = result.get(i + 1);
-                if (intersect(c1, c2)) {
-                    ++intercount;
-                    int pos1 = Math.min(c1.getPos1(), c2.getPos1());
-                    int pos2 = Math.min(c1.getPos2(), c2.getPos2());
-                    int limit1 = Math.max(c1.getPos1() + c1.getBefore().length(),
-                            c2.getPos1() + c2.getBefore().length());
-                    int limit2 = Math.max(c1.getPos2() + c1.getAfter().length(), c2.getPos2() + c2.getAfter().length());
-                    Change c = new Change(text1.substring(pos1, limit1), text2.substring(pos2, limit2), pos1, pos2);
-                    tmp.add(c);
-                }
-            }
-        }
-        return result.toArray(new Change[result.size()]);
-    }
-
-    private boolean intersect(Change c1, Change c2) {
-        return c1.getPos1() + c1.getBefore().length() > c2.getPos1()
-                || c1.getPos2() + c1.getAfter().length() > c2.getPos2();
     }
 }
