@@ -1,14 +1,14 @@
 package ps.utils;
 
 import java.io.IOException;
-import java.net.URL;
+import java.text.BreakIterator;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import edu.mit.jwi.Dictionary;
-import edu.mit.jwi.IDictionary;
-import edu.mit.jwi.item.IIndexWord;
-import edu.mit.jwi.item.POS;
+import edu.cmu.lti.jawjaw.JAWJAW;
+import edu.cmu.lti.jawjaw.pobj.POS;
 
 public class LangProc {
     public static class Patterns {
@@ -23,8 +23,8 @@ public class LangProc {
         public static final String QUOTE2 = "(" + author + additional + "*" + year + ")";
         public static final String FORMAT_CHAR = "(\\s)+";
         public static final String WORD_LIMIT = "(\\w|'|\\-)*";
-        public static final String TRIM_START = "^(\\.|,|!|\\?)";
-        public static final String TRIM_END = "(\\.|,|!|\\?)$";
+        public static final String TRIM_START = "^(\\.|,|!|\\?|\\s)";
+        public static final String TRIM_END = "(\\.|,|!|\\?|\\s)$";
     }
 
     public static boolean isNumber(String str) {
@@ -59,19 +59,68 @@ public class LangProc {
         return m.matches();
     }
 
+    public static int[] nearestWord(String text, int refPos1, int refPos2) {
+        int tmp, start, end;
+        BreakIterator bi = BreakIterator.getWordInstance(Locale.ENGLISH);
+        bi.setText(text);
+        tmp = bi.preceding(refPos1);
+        start = tmp == BreakIterator.DONE ? 0 : tmp;
+        tmp = bi.following(refPos2);
+        end = tmp == BreakIterator.DONE ? text.length() : tmp;
+        return new int[] { start, end };
+    }
+
+    public static int[] nearestSentence(String text, int refPos1, int refPos2) {
+        int tmp, start, end;
+        BreakIterator bi = BreakIterator.getSentenceInstance(Locale.ENGLISH);
+        bi.setText(text);
+        tmp = bi.preceding(refPos1);
+        start = tmp == BreakIterator.DONE ? 0 : tmp;
+        tmp = bi.following(refPos2);
+        end = tmp == BreakIterator.DONE ? text.length() : tmp;
+        return new int[] { start, end };
+    }
+
+    public static int[] nearestCitation(String text, int refPos1, int refPos2) {
+        int start = refPos1 - 20;
+        start = start < 0 ? 0 : start;
+        int end = refPos2 + 20;
+        end = end > text.length() ? text.length() : end;
+        String test_seq = text.substring(start, end);
+
+        Pattern p1 = Pattern.compile(Patterns.QUOTE1);
+        Matcher m1 = p1.matcher(test_seq);
+
+        int ind_left_bracket = 0;
+        int ind_right_bracket = 0;
+        while (m1.find()) {
+            ind_left_bracket = m1.start();
+            ind_right_bracket = m1.end();
+            if (refPos1 - start > ind_left_bracket && refPos2 - start < ind_right_bracket) {
+                return new int[] { start + ind_left_bracket, start + ind_right_bracket };
+            }
+        }
+
+        Pattern p2 = Pattern.compile(Patterns.QUOTE2);
+        Matcher m2 = p2.matcher(test_seq);
+
+        while (m2.find()) {
+            ind_left_bracket = m2.start();
+            ind_right_bracket = m2.end();
+            if (refPos1 - start > ind_left_bracket && refPos2 - start < ind_right_bracket) {
+                return new int[] { start + ind_left_bracket, start + ind_right_bracket };
+            }
+        }
+        return null;
+    }
+
     public static boolean inDictionary(String word) throws IOException {
-        String wnpath = "src/main/resources/wordnet/dict";
-        URL url = new URL("file", null, wnpath);
-        IDictionary dict = new Dictionary(url);
-        dict.open();
+        Set<String> s1 = JAWJAW.findSynonyms(word, POS.a);
+        Set<String> s2 = JAWJAW.findSynonyms(word, POS.n);
+        Set<String> s3 = JAWJAW.findSynonyms(word, POS.r);
+        Set<String> s4 = JAWJAW.findSynonyms(word, POS.v);
 
-        IIndexWord idxWord1 = dict.getIndexWord(word, POS.ADJECTIVE);
-        IIndexWord idxWord2 = dict.getIndexWord(word, POS.ADVERB);
-        IIndexWord idxWord3 = dict.getIndexWord(word, POS.NOUN);
-        IIndexWord idxWord4 = dict.getIndexWord(word, POS.VERB);
-
-        dict.close();
-        return idxWord1 != null || idxWord2 != null || idxWord3 != null || idxWord4 != null;
+        return !(s1.isEmpty() && s2.isEmpty() && s3.isEmpty() && s4.isEmpty());
     }
 
 }

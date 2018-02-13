@@ -1,15 +1,14 @@
 package ps.changeclassifier;
 
-import java.text.BreakIterator;
 import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.Locale;
 
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Diff;
 import name.fraser.neil.plaintext.diff_match_patch.Operation;
 import ps.models.Change;
 import ps.models.PositionedDiff;
+import ps.utils.LangProc;
 import ps.utils.LangProc.Patterns;
 
 /**
@@ -18,9 +17,8 @@ import ps.utils.LangProc.Patterns;
  */
 public class ChangeDetector {
     private diff_match_patch dmp;
-    public static final ChangeDetector INSTANCE = new ChangeDetector();
 
-    private ChangeDetector() {
+    public ChangeDetector() {
         this.dmp = new diff_match_patch();
     }
 
@@ -120,37 +118,49 @@ public class ChangeDetector {
     /*
         Extend modified text to full entities:
         <ul>
-        <li>group whitespace characters;</li>
         <li>retrieve the whole citation if part of it was changed;</li>
-        <li>extend changes to full words.</li>
+        <li>extend changes to full words;</li>
+        <li>extend changes to full sentences.</li>
         </ul>
     */
     private Change[] extendChanges(Change[] diffs, String text1, String text2) {
-        Change[] res = diffs.clone();
-        BreakIterator bi = BreakIterator.getWordInstance(new Locale("en"));
-        int tmp = 0, start = 0, end = 0;
-        int pos1 = 0, pos2 = 0;
-        String before = "", after = "";
+        Change[] res = new Change[diffs.length];
         for (int i = 0; i < diffs.length; ++i) {
-            bi.setText(text1);
-            tmp = bi.preceding(diffs[i].getPos1());
-            start = tmp == BreakIterator.DONE ? 0 : tmp;
-            tmp = bi.following(diffs[i].getPos1() + diffs[i].getBefore().length());
-            end = tmp == BreakIterator.DONE ? text1.length() : tmp;
-
-            pos1 = start;
-            before = text1.substring(start, end).replaceAll(Patterns.TRIM_START, "");
-
-            bi.setText(text2);
-            tmp = bi.preceding(diffs[i].getPos2());
-            start = tmp == BreakIterator.DONE ? 0 : tmp;
-            tmp = bi.following(diffs[i].getPos2() + diffs[i].getAfter().length());
-            end = tmp == BreakIterator.DONE ? text2.length() : tmp;
-
-            pos2 = start;
-            after = text2.substring(start, end).replaceAll(Patterns.TRIM_START, "");
-            res[i] = new Change(before, after, pos1, pos2);
+            res[i] = extendChange(diffs[i], text1, text2, true);
         }
         return res;
     }
+
+    protected static Change extendChange(Change c, String text1, String text2, boolean word) {
+        int pos1 = 0, pos2 = 0;
+        String before = "", after = "";
+        int[] extension = new int[2];
+        extension = LangProc.nearestCitation(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
+        if (extension == null) {
+            if (word) {
+                extension = LangProc.nearestWord(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
+            } else {
+                extension = LangProc.nearestSentence(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
+            }
+        }
+        pos1 = extension[0];
+        before = text1.substring(extension[0], extension[1]).replaceAll(Patterns.TRIM_START, "")
+                .replaceAll(Patterns.TRIM_END, "");
+
+        extension = LangProc.nearestCitation(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
+        if (extension == null) {
+            if (word) {
+                extension = LangProc.nearestWord(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
+            } else {
+                extension = LangProc.nearestSentence(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
+            }
+        }
+
+        pos2 = extension[0];
+        after = text2.substring(extension[0], extension[1]).replaceAll(Patterns.TRIM_START, "")
+                .replaceAll(Patterns.TRIM_END, "");
+
+        return new Change(before, after, pos1, pos2);
+    }
+
 }

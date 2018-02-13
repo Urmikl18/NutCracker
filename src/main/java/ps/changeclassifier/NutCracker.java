@@ -2,17 +2,11 @@ package ps.changeclassifier;
 
 import java.util.Map;
 
-import ps.models.*;
+import ps.models.Change;
+import ps.models.ChangeTag;
 
 public class NutCracker {
-    private ChangeDetector cd;
-    private ChangeAnalyzer ca;
-
-    public static final NutCracker INSTANCE = new NutCracker();
-
-    private NutCracker() {
-        this.cd = ChangeDetector.INSTANCE;
-        this.ca = ChangeAnalyzer.INSTANCE;
+    public NutCracker() {
     }
 
     public ChangeTag[] getChangeClassification(String text1, String text2) {
@@ -20,9 +14,11 @@ public class NutCracker {
         Preprocessor p = Preprocessor.INSTANCE;
         Map<String, Double> topic = p.calculateTopic(text1);
         // 1. Detect Changes
+        ChangeDetector cd = new ChangeDetector();
         Change[] changes = cd.getChanges(text1, text2);
         // 2. Analyze Changes
-        ChangeTag[] class_changes = ca.getClassification(changes);
+        ChangeAnalyzer ca = new ChangeAnalyzer();
+        ChangeTag[] class_changes = ca.getClassification(changes, text1, text2);
         // 3. Return Classification
         return class_changes;
     }

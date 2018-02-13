@@ -50,7 +50,7 @@ public class App {
             return;
         }
 
-        NutCracker cc = NutCracker.INSTANCE;
+        NutCracker cc = new NutCracker();
         ChangeTag[] changes_tag = cc.getChangeClassification(text1, text2);
         System.out.println();
         Arrays.stream(changes_tag).forEach(c_t -> System.out.println(c_t));
