@@ -53,7 +53,7 @@ public class LangProc {
     }
 
     public static boolean isWord(String str) {
-        String regex = "^[A-Za-z]+$";
+        String regex = "^(\\w|'|-)+$";
         Pattern p = Pattern.compile(regex);
         Matcher m = p.matcher(str);
         return m.matches();
@@ -71,14 +71,14 @@ public class LangProc {
     }
 
     public static int[] nearestSentence(String text, int refPos1, int refPos2) {
-        int tmp, start, end;
-        BreakIterator bi = BreakIterator.getSentenceInstance(Locale.ENGLISH);
-        bi.setText(text);
-        tmp = bi.preceding(refPos1);
-        start = tmp == BreakIterator.DONE ? 0 : tmp;
-        tmp = bi.following(refPos2);
-        end = tmp == BreakIterator.DONE ? text.length() : tmp;
-        return new int[] { start, end };
+        Pattern p = Pattern.compile("([a-zA-Z\\-\\'0-9]+(\\.|\\. |'(s |re |t |m |ll )|s' | )?)+");
+        Matcher m = p.matcher(text);
+        while (m.find()) {
+            if (m.start() <= refPos1 && refPos2 <= m.end()) {
+                return new int[] { m.start(), m.end() };
+            }
+        }
+        return new int[] { refPos1, refPos2 };
     }
 
     public static int[] nearestCitation(String text, int refPos1, int refPos2) {

@@ -20,7 +20,7 @@ public class AppTest {
             Tag.CITATION, Tag.RELATED_IDEA, Tag.RELATED_IDEA, Tag.RELATED_IDEA }, { Tag.RELATED_TERM } };
 
     public static void runTest(int testNum) {
-        NutCracker nc = NutCracker.INSTANCE;
+        NutCracker nc = new NutCracker();
         String text1 = "";
         String text2 = "";
         try {
