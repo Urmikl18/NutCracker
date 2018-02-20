@@ -27,9 +27,10 @@ public class ChangeTag {
      * <li>RELATED_TERM: replaced word has a similar meaning.</li>
      * <li>UNRELATED_TERM: individual words were replaced, but they are not related.</li>
      * <li>REPHRASING: rephrasing sentences.</li>
-     * <li>RELATED_IDEA: large text snippets were modified, but the idea remains similar.</li>
-     * <li>NOVEL_IDEA: large text snippets were modified, and newly added text expresses a new idea.</li>
-     * <li>UNDEFINED: default case. Some changes can not be classified correctly.</li>
+     * <li>MINOR_TOPIC_CHANGE: meaning of a paper before and after change are similar.</li>
+     * <li>MAJOR_TOPIC_CHANGE: meaning of a paper before and after change are sufficiently different.</li>
+     * <li>REPHRASING: rephrasing sentences.</li>
+     * <li>UNDEFINED: default case. Some changes can not be classified correctly (e.g. changes in numbers or equations).</li>
      * </ul>
      */
     public static enum Tag {
@@ -37,7 +38,7 @@ public class ChangeTag {
 
         RELATED_TERM, UNRELATED_TERM, SYNONYM,
 
-        REPHRASING, RELATED_IDEA, NOVEL_IDEA,
+        REPHRASING, MINOR_TOPIC_CHANGE, MAJOR_TOPIC_CHANGE,
 
         UNDEFINED
     }
