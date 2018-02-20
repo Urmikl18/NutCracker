@@ -179,10 +179,12 @@ public class ChangeAnalyzer {
     Uses Fernando and Stevenson semantic similarity measure.
     */
     protected static boolean isRephrasing(Change change) {
-        change.setBefore("The dog sat on the mat");
-        change.setAfter("The mutt sat on the rug");
-        Set<String> w1 = new TreeSet<String>(LP.removeStopWords(LP.getWords(change.getBefore())));
-        Set<String> w2 = new TreeSet<String>(LP.removeStopWords(LP.getWords(change.getAfter())));
+        ArrayList<String> words1 = LP.getWords(change.getBefore());
+        ArrayList<String> words2 = LP.getWords(change.getAfter());
+        words1 = LP.removeStopWords(words1);
+        words2 = LP.removeStopWords(words2);
+        Set<String> w1 = new TreeSet<String>(words1);
+        Set<String> w2 = new TreeSet<String>(words2);
         Set<String> w = new TreeSet<>(w1);
         w.addAll(w2);
 
