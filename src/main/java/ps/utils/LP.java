@@ -50,6 +50,12 @@ public class LP {
         return true;
     }
 
+    public static boolean isSymbol(String str) {
+        Pattern p = Pattern.compile(RegEx.SYMBOL);
+        Matcher m = p.matcher(str);
+        return m.matches();
+    }
+
     /**
      * @param str string to be tested.
      * @return true, if string is a formatting symbol, false, otherwise.
@@ -214,7 +220,7 @@ public class LP {
      * @return a set of unique words in text (based only on regex matching)
      */
     public static ArrayList<String> getWords(String text) {
-        Pattern p = Pattern.compile("(\\w|'|-)+");
+        Pattern p = Pattern.compile("\\b([A-Za-z]|'|-)+\\b");
         Matcher m = p.matcher(text);
         ArrayList<String> w = new ArrayList<>();
         while (m.find()) {
@@ -228,16 +234,18 @@ public class LP {
      * @param text2 modified version of the document
      * @return a list of features (covered WordNet domains) in texts
      */
-    public static ArrayList<String> getFeatures(String text1, String text2) {
+    public static ArrayList<String> getFeatures(String text) {
         Set<String> w = new TreeSet<>();
-        Set<String> w1 = new TreeSet<String>(getWords(text1));
-        Set<String> w2 = new TreeSet<String>(getWords(text2));
+        Set<String> w1 = new TreeSet<String>(getWords(text));
         Set<String> tmp = new TreeSet<>(w1);
-        tmp.addAll(w2);
         w.addAll(tmp);
         for (String t : tmp) {
             for (POS pos : POS.values()) {
-                w.addAll(JAWJAW.findSynonyms(t, pos));
+                try {
+                    w.addAll(JAWJAW.findSynonyms(t, pos));
+                } catch (Exception e) {
+                    System.out.println(e);
+                }
             }
         }
         Set<String> d = new TreeSet<>();

@@ -11,6 +11,7 @@ import ps.changeclassifier.ChangeClassifier;
 import ps.changeclassifier.ChangeDetector;
 import ps.models.Change;
 import ps.models.ChangeTag;
+import ps.utils.Visualizer;
 
 /**
  * Entry point for the application.
@@ -82,6 +83,8 @@ public class NutCracker {
         }
 
         ArrayList<ChangeTag> classification = getChangeClassification(text1, text2);
-        classification.stream().forEach(c_t -> System.out.println(c_t));
+        // classification.stream().forEach(c_t -> System.out.println(c_t));
+
+        Visualizer.visualize(classification, text1);
     }
 }

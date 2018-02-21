@@ -25,6 +25,7 @@ public class ChangeClassifier {
         for (int i = 0; i < changes.size(); ++i) {
             Tag tag = ChangeClassifier.getTag(changes.get(i), text1, text2);
             ch_class.add(new ChangeTag(changes.get(i), tag));
+            System.out.println(ch_class.get(i));
         }
         return ch_class;
     }
@@ -43,17 +44,18 @@ public class ChangeClassifier {
             return Tag.UNDEFINED;
         }
 
-        boolean spelling = ChangeAnalyzer.isSpelling(change);
+        Change changed_word = ChangeDetector.extendChange(change, text1, text2, 1);
+        boolean spelling = ChangeAnalyzer.isSpelling(changed_word);
         if (spelling) {
             return Tag.SPELLING;
         }
 
-        boolean formatting = ChangeAnalyzer.isFormatting(change);
+        boolean formatting = ChangeAnalyzer.isFormatting(changed_word);
         if (formatting) {
             return Tag.FORMATTING;
         }
 
-        int sub_sim = ChangeAnalyzer.substitutionSimilarity(change);
+        int sub_sim = ChangeAnalyzer.substitutionSimilarity(changed_word);
         switch (sub_sim) {
         case -1:
             break;
@@ -65,8 +67,9 @@ public class ChangeClassifier {
             return Tag.SYNONYM;
         }
 
-        if (!change.getBefore().equals("") && !change.getAfter().equals("")) {
-            Change changed_sent = ChangeDetector.extendChange(change, text1, text2, false);
+        if (!changed_word.getBefore().equals("") && !changed_word.getAfter().equals("")) {
+
+            Change changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2);
 
             boolean grammar = ChangeAnalyzer.isGrammar(changed_sent);
             if (grammar) {
@@ -79,7 +82,7 @@ public class ChangeClassifier {
             }
         }
 
-        boolean topic_sim = ChangeAnalyzer.relatedTopics(change, text1);
+        boolean topic_sim = ChangeAnalyzer.relatedTopics(changed_word, text1);
         if (topic_sim) {
             return Tag.MINOR_TOPIC_CHANGE;
         } else {

@@ -124,40 +124,59 @@ public class ChangeDetector {
     private static ArrayList<Change> extendChanges(ArrayList<Change> diffs, String text1, String text2) {
         ArrayList<Change> res = new ArrayList<Change>();
         for (int i = 0; i < diffs.size(); ++i) {
-            res.add(extendChange(diffs.get(i), text1, text2, true));
+            res.add(extendChange(diffs.get(i), text1, text2, 0));
         }
         return res;
     }
 
-    protected static Change extendChange(Change c, String text1, String text2, boolean word) {
+    protected static Change extendChange(Change c, String text1, String text2, int option) {
         int pos1 = 0, pos2 = 0;
         String before = "", after = "";
         int[] extension = new int[2];
-        extension = LP.nearestCitation(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
-        if (extension == null) {
-            if (word) {
-                extension = LP.nearestWord(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
-            } else {
-                extension = LP.nearestSentence(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
+        switch (option) {
+        case 0: {
+            extension = LP.nearestCitation(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
+            if (extension == null) {
+                return c;
             }
-        }
-        pos1 = extension[0];
-        before = text1.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "").replaceAll(RegEx.TRIM_END,
-                "");
-
-        extension = LP.nearestCitation(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
-        if (extension == null) {
-            if (word) {
-                extension = LP.nearestWord(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
-            } else {
-                extension = LP.nearestSentence(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
+            pos1 = extension[0];
+            before = text1.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
+                    .replaceAll(RegEx.TRIM_END, "");
+            extension = LP.nearestCitation(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
+            if (extension == null) {
+                return c;
             }
+            pos2 = extension[0];
+            after = text2.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
+                    .replaceAll(RegEx.TRIM_END, "");
+            break;
         }
-
-        pos2 = extension[0];
-        after = text2.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "").replaceAll(RegEx.TRIM_END,
-                "");
-
+        case 1: {
+            extension = LP.nearestWord(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
+            pos1 = extension[0];
+            before = text1.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
+                    .replaceAll(RegEx.TRIM_END, "");
+            extension = LP.nearestWord(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
+            pos2 = extension[0];
+            after = text2.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
+                    .replaceAll(RegEx.TRIM_END, "");
+            break;
+        }
+        case 2: {
+            extension = LP.nearestSentence(text1, c.getPos1(), c.getPos1() + c.getBefore().length());
+            pos1 = extension[0];
+            before = text1.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
+                    .replaceAll(RegEx.TRIM_END, "");
+            extension = LP.nearestSentence(text2, c.getPos2(), c.getPos2() + c.getAfter().length());
+            pos2 = extension[0];
+            after = text2.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
+                    .replaceAll(RegEx.TRIM_END, "");
+            break;
+        }
+        default: {
+            return c;
+        }
+        }
         return new Change(before, after, pos1, pos2);
     }
 
