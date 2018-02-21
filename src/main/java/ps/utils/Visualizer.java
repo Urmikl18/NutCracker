@@ -47,9 +47,6 @@ public class Visualizer {
         int right = 0;
         int index = 1;
         for (ChangeTag ct : classification) {
-            String type = ct.getTag().toString();
-            int pos1 = ct.getChange().getPos1();
-            int pos2 = ct.getChange().getPos2();
 
             left = right;
             right = ct.getChange().getPos1();
