@@ -36,9 +36,6 @@ public class ChangeAnalyzer {
     private static ILexicalDatabase db = new NictWordNet();
     // Diff-Match-Patch tool
     private static diff_match_patch dmp = new diff_match_patch();
-    // Features
-    private static ArrayList<String> features = null;
-    private static Map<String, Double> dist1 = null;
 
     private ChangeAnalyzer() {
     }
@@ -229,21 +226,19 @@ public class ChangeAnalyzer {
     Novel feature-based approach inspired by topic modelling and feature-based word similarity measures.
     */
     protected static boolean relatedTopics(Change change, String text) {
-        if (features == null) {
-            features = LP.getFeatures(text);
-            dist1 = LP.getDistribution(features, text);
-        }
-
-        String after = "";
+        String before = "", after = "";
         if (change.getBefore().equals("")) {
+            before = text;
             after = change.getAfter();
         } else {
+            before = text;
             after = text.substring(change.getPos1())
                     + text.substring(change.getPos1() + change.getBefore().length(), text.length());
         }
+        ArrayList<String> features = LP.getFeatures(before, after);
+        Map<String, Double> dist1 = LP.getDistribution(features, before);
         Map<String, Double> dist2 = LP.getDistribution(features, after);
         double score = LP.jsd(dist1, dist2);
-        System.out.println(score);
         return score > 0.5;
     }
 

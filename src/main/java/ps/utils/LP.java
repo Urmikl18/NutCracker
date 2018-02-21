@@ -234,17 +234,16 @@ public class LP {
      * @param text2 modified version of the document
      * @return a list of features (covered WordNet domains) in texts
      */
-    public static ArrayList<String> getFeatures(String text) {
+    public static ArrayList<String> getFeatures(String text1, String text2) {
         Set<String> w = new TreeSet<>();
-        Set<String> tmp = new TreeSet<String>(getWords(text));
+        Set<String> w1 = new TreeSet<String>(getWords(text1));
+        Set<String> w2 = new TreeSet<String>(getWords(text2));
+        Set<String> tmp = new TreeSet<>(w1);
+        tmp.addAll(w2);
         w.addAll(tmp);
         for (String t : tmp) {
             for (POS pos : POS.values()) {
-                try {
-                    w.addAll(JAWJAW.findSynonyms(t, pos));
-                } catch (Exception e) {
-                    System.out.println(e);
-                }
+                w.addAll(JAWJAW.findSynonyms(t, pos));
             }
         }
         Set<String> d = new TreeSet<>();
