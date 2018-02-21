@@ -227,7 +227,7 @@ public class ChangeAnalyzer {
     */
     protected static boolean relatedTopics(Change change, String text) {
         String before = "", after = "";
-        if (change.getBefore().equals("")) {
+        if (change.getBefore().length() < change.getAfter().length()) {
             before = text;
             after = change.getAfter();
         } else {
