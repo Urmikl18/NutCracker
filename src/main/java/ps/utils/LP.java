@@ -236,8 +236,7 @@ public class LP {
      */
     public static ArrayList<String> getFeatures(String text) {
         Set<String> w = new TreeSet<>();
-        Set<String> w1 = new TreeSet<String>(getWords(text));
-        Set<String> tmp = new TreeSet<>(w1);
+        Set<String> tmp = new TreeSet<String>(getWords(text));
         w.addAll(tmp);
         for (String t : tmp) {
             for (POS pos : POS.values()) {
