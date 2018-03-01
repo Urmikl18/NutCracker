@@ -25,6 +25,7 @@ public class ChangeClassifier {
         for (int i = 0; i < changes.size(); ++i) {
             Tag tag = ChangeClassifier.getTag(changes.get(i), text1, text2);
             ch_class.add(new ChangeTag(changes.get(i), tag));
+            System.out.println(ch_class.get(i));
         }
         return ch_class;
     }
@@ -79,12 +80,16 @@ public class ChangeClassifier {
             }
         }
 
-        boolean topic_sim = ChangeAnalyzer.relatedTopics(change, text1);
-        if (topic_sim) {
+        int topic_sim = ChangeAnalyzer.relatedTopics(change, text1);
+        switch (topic_sim) {
+        case -1:
+            break;
+        case 0:
             return Tag.MINOR_TOPIC_CHANGE;
-        } else {
+        case 1:
             return Tag.MAJOR_TOPIC_CHANGE;
         }
+        return Tag.UNDEFINED;
     }
 
 }

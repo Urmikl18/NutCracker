@@ -176,10 +176,8 @@ public class ChangeAnalyzer {
     Uses Fernando and Stevenson semantic similarity measure.
     */
     protected static boolean isRephrasing(Change change) {
-        ArrayList<String> words1 = LP.getWords(change.getBefore());
-        ArrayList<String> words2 = LP.getWords(change.getAfter());
-        words1 = LP.removeStopWords(words1);
-        words2 = LP.removeStopWords(words2);
+        ArrayList<String> words1 = LP.tokenizeStopStem(change.getBefore());
+        ArrayList<String> words2 = LP.tokenizeStopStem(change.getAfter());
         Set<String> w1 = new TreeSet<String>(words1);
         Set<String> w2 = new TreeSet<String>(words2);
         Set<String> w = new TreeSet<>(w1);
@@ -225,21 +223,29 @@ public class ChangeAnalyzer {
     Checks how a change influenced the topic of a text.
     Novel feature-based approach inspired by topic modelling and feature-based word similarity measures.
     */
-    protected static boolean relatedTopics(Change change, String text) {
+    protected static int relatedTopics(Change change, String text) {
         String before = "", after = "";
         if (change.getBefore().equals("")) {
             before = text;
             after = change.getAfter();
-        } else {
+        } else if (change.getAfter().equals("")) {
             before = text;
             after = text.substring(change.getPos1())
                     + text.substring(change.getPos1() + change.getBefore().length(), text.length());
+        } else {
+            before = text;
+            after = text.substring(change.getPos1()) + change.getAfter()
+                    + text.substring(change.getPos1() + change.getBefore().length(), text.length());
         }
         ArrayList<String> features = LP.getFeatures(before, after);
+        if (features.isEmpty()) {
+            return -1;
+        }
         Map<String, Double> dist1 = LP.getDistribution(features, before);
         Map<String, Double> dist2 = LP.getDistribution(features, after);
         double score = LP.jsd(dist1, dist2);
-        return score > 0.5;
+
+        return score > 0.5 ? 0 : 1;
     }
 
 }

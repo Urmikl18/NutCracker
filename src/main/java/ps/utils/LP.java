@@ -1,10 +1,9 @@
 package ps.utils;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.text.BreakIterator;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -12,7 +11,14 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import ps.utils.RegEx;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.StopFilter;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.en.EnglishMinimalStemFilter;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+
 import edu.cmu.lti.jawjaw.JAWJAW;
 import edu.cmu.lti.jawjaw.pobj.POS;
 
@@ -20,22 +26,6 @@ import edu.cmu.lti.jawjaw.pobj.POS;
  * Language processing module.
  */
 public class LP {
-
-    private static final ArrayList<String> stopwords = new ArrayList<>(Arrays.asList("a", "about", "above", "after",
-            "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", "be", "because", "been",
-            "before", "being", "below", "between", "both", "but", "by", "can't", "cannot", "could", "couldn't", "did",
-            "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during", "each", "few", "for", "from",
-            "further", "had", "hadn't", "has", "hasn't", "have", "haven't", "having", "he", "he'd", "he'll", "he's",
-            "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how", "how's", "i", "i'd", "i'll",
-            "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me", "more",
-            "most", "mustn't", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other",
-            "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "shan't", "she", "she'd", "she'll",
-            "she's", "should", "shouldn't", "so", "some", "such", "than", "that", "that's", "the", "their", "theirs",
-            "them", "themselves", "then", "there", "there's", "these", "they", "they'd", "they'll", "they're",
-            "they've", "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "wasn't", "we",
-            "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's", "when", "when's", "where",
-            "where's", "which", "while", "who", "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't",
-            "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself", "yourselves"));
 
     /**
      * @param str string to be tested.
@@ -210,40 +200,19 @@ public class LP {
     }
 
     /**
-     * @param text to be parsed
-     * @return a set of unique words in text (based only on regex matching)
-     */
-    public static ArrayList<String> getWords(String text) {
-        Pattern p = Pattern.compile("(\\w|'|-)+");
-        Matcher m = p.matcher(text);
-        ArrayList<String> w = new ArrayList<>();
-        while (m.find()) {
-            w.add(text.substring(m.start(), m.end()).toLowerCase());
-        }
-        return w;
-    }
-
-    /**
      * @param text1 initial version of the document
      * @param text2 modified version of the document
      * @return a list of features (covered WordNet domains) in texts
      */
     public static ArrayList<String> getFeatures(String text1, String text2) {
-        Set<String> w = new TreeSet<>();
-        Set<String> w1 = new TreeSet<String>(getWords(text1));
-        Set<String> w2 = new TreeSet<String>(getWords(text2));
-        Set<String> tmp = new TreeSet<>(w1);
-        tmp.addAll(w2);
-        w.addAll(tmp);
-        for (String t : tmp) {
-            for (POS pos : POS.values()) {
-                w.addAll(JAWJAW.findSynonyms(t, pos));
-            }
-        }
+        Set<String> w1 = new TreeSet<String>(tokenizeStopStem(text1));
+        Set<String> w2 = new TreeSet<String>(tokenizeStopStem(text2));
+        Set<String> w = new TreeSet<>(w1);
+        w.addAll(w2);
         Set<String> d = new TreeSet<>();
         for (String word : w) {
             for (POS pos : POS.values()) {
-                d.addAll(JAWJAW.findDomains(word, pos));
+                d.addAll(JAWJAW.findInDomains(word, pos));
             }
         }
         ArrayList<String> features = new ArrayList<String>(d);
@@ -257,30 +226,21 @@ public class LP {
      */
     public static Map<String, Double> getDistribution(ArrayList<String> features, String text) {
         Map<String, Double> dist = new TreeMap<>();
-        ArrayList<String> words = getWords(text);
+        ArrayList<String> words = tokenizeStopStem(text);
         for (String f : features) {
             dist.put(f, 0.0);
         }
         int totalCount = 0;
         for (String word : words) {
-            Set<String> tmp = new TreeSet<>();
-            tmp.add(word);
             for (POS pos : POS.values()) {
-                tmp.addAll(JAWJAW.findSynonyms(word, pos));
-            }
-            for (String t : tmp) {
-                for (POS pos : POS.values()) {
-                    for (String domain : JAWJAW.findDomains(t, pos)) {
-                        if (dist.containsKey(domain)) {
-                            ++totalCount;
-                            double freq = dist.get(domain);
-                            dist.put(domain, freq + 1);
-                            // break;
-                        }
+                for (String domain : JAWJAW.findInDomains(word, pos)) {
+                    if (dist.containsKey(domain)) {
+                        ++totalCount;
+                        double freq = dist.get(domain);
+                        dist.put(domain, freq + 1);
                     }
                 }
             }
-
         }
 
         if (totalCount != 0) {
@@ -289,7 +249,6 @@ public class LP {
                 dist.put(key, newFreq);
             }
         }
-
         return dist;
     }
 
@@ -330,13 +289,32 @@ public class LP {
         return mid;
     }
 
-    public static ArrayList<String> removeStopWords(ArrayList<String> words) {
-        Iterator<String> it = words.iterator();
-        while (it.hasNext()) {
-            if (stopwords.contains(it.next())) {
-                it.remove();
+    /**
+     * @param text to be parsed
+     * @return A list of stemmed words without stop-words
+     */
+    public static ArrayList<String> tokenizeStopStem(String text) {
+        ArrayList<String> words = new ArrayList<>();
+        Analyzer analyzer = new StandardAnalyzer();
+        TokenStream tokenStream = analyzer.tokenStream(null, new StringReader(text));
+        tokenStream = new StopFilter(tokenStream, StandardAnalyzer.ENGLISH_STOP_WORDS_SET);
+        tokenStream = new EnglishMinimalStemFilter(tokenStream);
+
+        final CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
+        try {
+            tokenStream.reset();
+
+            while (tokenStream.incrementToken()) {
+                words.add(charTermAttribute.toString());
             }
+            tokenStream.end();
+            tokenStream.close();
+        } catch (IOException e) {
+            System.err.println(e);
+        } finally {
+            analyzer.close();
         }
+
         return words;
     }
 
