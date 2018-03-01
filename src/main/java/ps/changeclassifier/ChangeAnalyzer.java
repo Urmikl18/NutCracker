@@ -74,7 +74,7 @@ public class ChangeAnalyzer {
             filt_diff[i] = (Diff) tmp[i];
         }
         for (Diff d : filt_diff) {
-            if (!LP.isNumber(d.text)) {
+            if (!LP.isNumber(d.text) || !LP.isSymbol(d.text)) {
                 return false;
             }
         }
@@ -225,7 +225,7 @@ public class ChangeAnalyzer {
     */
     protected static int relatedTopics(Change change, String text) {
         String before = "", after = "";
-        if (change.getBefore().equals("")) {
+        if (change.getBefore().length() < change.getAfter().length()) {
             before = text;
             after = change.getAfter();
         } else if (change.getAfter().equals("")) {

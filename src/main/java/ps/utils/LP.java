@@ -40,6 +40,12 @@ public class LP {
         return true;
     }
 
+    public static boolean isSymbol(String str) {
+        Pattern p = Pattern.compile(RegEx.SYMBOL);
+        Matcher m = p.matcher(str);
+        return m.matches();
+    }
+
     /**
      * @param str string to be tested.
      * @return true, if string is a formatting symbol, false, otherwise.

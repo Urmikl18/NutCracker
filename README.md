@@ -12,4 +12,7 @@
 2. Compare contents of two plain-text documents:
    * java-jar nutcracker-jar-with-dependencies.jar -f path1 path2
    * Example (files are included):
-      * java-jar nutcracker-jar-with-dependencies.jar -t ../src/main/resources/benchmark/f1_1.txt ../src/main/resources/benchmark/f1_2.txt
+      * java-jar nutcracker-jar-with-dependencies.jar -t ../src/main/resources/demo/f1_1.txt ../src/main/resources/demo/f1_2.txt
+
+## Visualization
+At the end the visualization is created and the path to it is printed out.
