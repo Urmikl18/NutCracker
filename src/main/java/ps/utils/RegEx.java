@@ -16,4 +16,5 @@ public class RegEx {
     public static final String FORMAT_CHAR = "(\\s)+";
     public static final String TRIM_START = "^(\\.|,|!|\\?|\\s)";
     public static final String TRIM_END = "(\\.|,|!|\\?|\\s)$";
+    public static final String SYMBOL = "\\W";
 }
