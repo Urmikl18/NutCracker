@@ -241,10 +241,33 @@ public class ChangeAnalyzer {
         if (features.isEmpty()) {
             return -1;
         }
+
         Map<String, Double> dist1 = LP.getDistribution(features, before);
         Map<String, Double> dist2 = LP.getDistribution(features, after);
-        double score = LP.jsd(dist1, dist2);
 
+        boolean emptymap = true;
+        for (double d1 : dist1.values()) {
+            if (d1 != 0.0) {
+                emptymap = false;
+                break;
+            }
+        }
+        if (emptymap) {
+            return -1;
+        }
+
+        emptymap = true;
+        for (double d2 : dist2.values()) {
+            if (d2 != 0.0) {
+                emptymap = false;
+                break;
+            }
+        }
+        if (emptymap) {
+            return -1;
+        }
+
+        double score = LP.jsd(dist1, dist2);
         return score > 0.5 ? 0 : 1;
     }
 
