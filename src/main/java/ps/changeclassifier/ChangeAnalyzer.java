@@ -100,18 +100,30 @@ public class ChangeAnalyzer {
     Damerau-Levenshtein distance of misspelled words equals 2 in 80% of cases.
     */
     protected static boolean isSpelling(Change change) {
-        if (LP.isWord(change.getBefore()) && LP.isWord(change.getAfter())) {
+        ArrayList<String> w1 = LP.tokenizeStopStem(change.getBefore(), false, true);
+        ArrayList<String> w2 = LP.tokenizeStopStem(change.getAfter(), false, true);
+        String before = "";
+        String after = "";
+        if (w1.size() == 1 && w2.size() == 1) {
+            before = w1.get(0);
+            if (!change.getBefore().equals(change.getBefore().toLowerCase())) {
+                before = before.substring(0, 1).toUpperCase() + before.substring(1);
+            }
+            after = w2.get(0);
+            if (!change.getAfter().equals(change.getAfter().toLowerCase())) {
+                after = after.substring(0, 1).toUpperCase() + after.substring(1);
+            }
             boolean misspelling = false;
             boolean correct = false;
             try {
-                misspelling = !LP.inDictionary(change.getBefore());
-                correct = LP.inDictionary(change.getAfter());
+                misspelling = !LP.inDictionary(before);
+                correct = LP.inDictionary(after);
             } catch (IOException e) {
                 System.out.println("Unable to open the WordNet dictionary");
                 return false;
             }
             if (misspelling && correct) {
-                LinkedList<Diff> diff = dmp.diff_main(change.getBefore(), change.getAfter());
+                LinkedList<Diff> diff = dmp.diff_main(before, after);
                 dmp.diff_cleanupSemantic(diff);
                 if (dmp.diff_levenshtein(diff) <= 2) {
                     return true;
@@ -126,26 +138,31 @@ public class ChangeAnalyzer {
     Wu-Palmer Similarity Measure.
     */
     protected static int substitutionSimilarity(Change change) {
-        if (LP.isWord(change.getBefore()) && LP.isWord(change.getAfter())) {
-            Set<String> s = JAWJAW.findSynonyms(change.getBefore(), POS.a);
-            s.addAll(JAWJAW.findSynonyms(change.getBefore(), POS.n));
-            s.addAll(JAWJAW.findSynonyms(change.getBefore(), POS.r));
-            s.addAll(JAWJAW.findSynonyms(change.getBefore(), POS.v));
+        ArrayList<String> w1 = LP.tokenizeStopStem(change.getBefore(), false, true);
+        ArrayList<String> w2 = LP.tokenizeStopStem(change.getAfter(), false, true);
+        if (w1.size() == 1 && w2.size() == 1) {
+            String before = w1.get(0);
+            String after = w2.get(0);
+            Set<String> s = JAWJAW.findSynonyms(before, POS.a);
+            s.addAll(JAWJAW.findSynonyms(before, POS.n));
+            s.addAll(JAWJAW.findSynonyms(before, POS.r));
+            s.addAll(JAWJAW.findSynonyms(before, POS.v));
 
             for (String str : s) {
-                if (str.equals(change.getAfter())) {
+                if (str.equals(after)) {
                     return 2;
                 }
             }
 
             WS4JConfiguration.getInstance().setMFS(false);
-            double sim = new WuPalmer(db).calcRelatednessOfWords(change.getBefore(), change.getAfter());
+            double sim = new WuPalmer(db).calcRelatednessOfWords(before, after);
             if (sim > 0.5) {
                 return 1;
             } else if (sim > 0) {
                 return 0;
             }
         }
+
         return -1;
     }
 
@@ -176,8 +193,8 @@ public class ChangeAnalyzer {
     Uses Fernando and Stevenson semantic similarity measure.
     */
     protected static boolean isRephrasing(Change change) {
-        ArrayList<String> words1 = LP.tokenizeStopStem(change.getBefore());
-        ArrayList<String> words2 = LP.tokenizeStopStem(change.getAfter());
+        ArrayList<String> words1 = LP.tokenizeStopStem(change.getBefore(), true, true);
+        ArrayList<String> words2 = LP.tokenizeStopStem(change.getAfter(), true, true);
         Set<String> w1 = new TreeSet<String>(words1);
         Set<String> w2 = new TreeSet<String>(words2);
         Set<String> w = new TreeSet<>(w1);
