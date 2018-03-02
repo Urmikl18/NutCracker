@@ -72,17 +72,6 @@ public class LP {
 
     /**
      * @param str string to be tested.
-     * @return true, if string is a word, false, otherwise.
-     */
-    public static boolean isWord(String str) {
-        String regex = "^(\\w|'|-)+$";
-        Pattern p = Pattern.compile(regex);
-        Matcher m = p.matcher(str);
-        return m.matches();
-    }
-
-    /**
-     * @param str string to be tested.
      * @return true, if a word is in a dictionary, false, otherwise.
      */
     public static boolean inDictionary(String word) throws IOException {
@@ -211,8 +200,8 @@ public class LP {
      * @return a list of features (covered WordNet domains) in texts
      */
     public static ArrayList<String> getFeatures(String text1, String text2) {
-        Set<String> w1 = new TreeSet<String>(tokenizeStopStem(text1));
-        Set<String> w2 = new TreeSet<String>(tokenizeStopStem(text2));
+        Set<String> w1 = new TreeSet<String>(tokenizeStopStem(text1, true, true));
+        Set<String> w2 = new TreeSet<String>(tokenizeStopStem(text2, true, true));
         Set<String> w = new TreeSet<>(w1);
         w.addAll(w2);
         Set<String> d = new TreeSet<>();
@@ -232,7 +221,7 @@ public class LP {
      */
     public static Map<String, Double> getDistribution(ArrayList<String> features, String text) {
         Map<String, Double> dist = new TreeMap<>();
-        ArrayList<String> words = tokenizeStopStem(text);
+        ArrayList<String> words = tokenizeStopStem(text, true, true);
         for (String f : features) {
             dist.put(f, 0.0);
         }
@@ -299,12 +288,16 @@ public class LP {
      * @param text to be parsed
      * @return A list of stemmed words without stop-words
      */
-    public static ArrayList<String> tokenizeStopStem(String text) {
+    public static ArrayList<String> tokenizeStopStem(String text, boolean stop, boolean stem) {
         ArrayList<String> words = new ArrayList<>();
         Analyzer analyzer = new StandardAnalyzer();
         TokenStream tokenStream = analyzer.tokenStream(null, new StringReader(text));
-        tokenStream = new StopFilter(tokenStream, StandardAnalyzer.ENGLISH_STOP_WORDS_SET);
-        tokenStream = new EnglishMinimalStemFilter(tokenStream);
+        if (stop) {
+            tokenStream = new StopFilter(tokenStream, StandardAnalyzer.ENGLISH_STOP_WORDS_SET);
+        }
+        if (stem) {
+            tokenStream = new EnglishMinimalStemFilter(tokenStream);
+        }
 
         final CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
         try {
