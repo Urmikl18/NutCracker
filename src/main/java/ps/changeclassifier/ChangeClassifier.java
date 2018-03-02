@@ -25,7 +25,7 @@ public class ChangeClassifier {
         for (int i = 0; i < changes.size(); ++i) {
             Tag tag = ChangeClassifier.getTag(changes.get(i), text1, text2);
             ch_class.add(new ChangeTag(changes.get(i), tag));
-            System.out.println(ch_class.get(i));
+            System.out.println((i + 1) + "/" + changes.size() + ": " + ch_class.get(i));
         }
         return ch_class;
     }

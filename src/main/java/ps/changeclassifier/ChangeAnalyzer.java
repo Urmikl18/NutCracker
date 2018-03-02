@@ -74,7 +74,7 @@ public class ChangeAnalyzer {
             filt_diff[i] = (Diff) tmp[i];
         }
         for (Diff d : filt_diff) {
-            if (!LP.isNumber(d.text) || !LP.isSymbol(d.text)) {
+            if (!LP.isNumber(d.text) && !LP.isSymbol(d.text)) {
                 return false;
             }
         }
@@ -195,6 +195,11 @@ public class ChangeAnalyzer {
     protected static boolean isRephrasing(Change change) {
         ArrayList<String> words1 = LP.tokenizeStopStem(change.getBefore(), true, true);
         ArrayList<String> words2 = LP.tokenizeStopStem(change.getAfter(), true, true);
+
+        if (words1.isEmpty() || words2.isEmpty()) {
+            return false;
+        }
+
         Set<String> w1 = new TreeSet<String>(words1);
         Set<String> w2 = new TreeSet<String>(words2);
         Set<String> w = new TreeSet<>(w1);

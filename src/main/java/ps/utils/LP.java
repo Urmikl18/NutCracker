@@ -207,7 +207,11 @@ public class LP {
         Set<String> d = new TreeSet<>();
         for (String word : w) {
             for (POS pos : POS.values()) {
-                d.addAll(JAWJAW.findInDomains(word, pos));
+                try {
+                    d.addAll(JAWJAW.findInDomains(word, pos));
+                } catch (Exception e) {
+                    continue;
+                }
             }
         }
         ArrayList<String> features = new ArrayList<String>(d);
@@ -222,13 +226,19 @@ public class LP {
     public static Map<String, Double> getDistribution(ArrayList<String> features, String text) {
         Map<String, Double> dist = new TreeMap<>();
         ArrayList<String> words = tokenizeStopStem(text, true, true);
+        Set<String> domains = new TreeSet<>();
         for (String f : features) {
             dist.put(f, 0.0);
         }
         int totalCount = 0;
         for (String word : words) {
             for (POS pos : POS.values()) {
-                for (String domain : JAWJAW.findInDomains(word, pos)) {
+                try {
+                    domains = JAWJAW.findInDomains(word, pos);
+                } catch (Exception e) {
+                    domains = new TreeSet<>();
+                }
+                for (String domain : domains) {
                     if (dist.containsKey(domain)) {
                         ++totalCount;
                         double freq = dist.get(domain);
