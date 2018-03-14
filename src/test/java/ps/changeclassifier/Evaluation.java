@@ -35,7 +35,7 @@ public class Evaluation {
         Random randomGen = new Random();
         ArrayList<ChangeTag> random_class = new ArrayList<ChangeTag>(changes.size());
         for (Change c : changes) {
-            int index = randomGen.nextInt(10);
+            int index = randomGen.nextInt(11);
             random_class.add(new ChangeTag(c, tags[index]));
         }
         return random_class;
@@ -54,7 +54,7 @@ public class Evaluation {
         ArrayList<Change> changes = ChangeDetector.getChanges(text1, text2);
         ArrayList<ChangeTag> random_class = getRandomClassification(changes);
         ArrayList<ChangeTag> alg_class = ChangeClassifier.getClassification(changes, text1, text2);
-        Visualizer.visualize(alg_class, text1, text2);
+        // Visualizer.visualize(alg_class, text1, text2);
         try {
             saveToFile(alg_class, random_class, testNum);
         } catch (Exception e) {

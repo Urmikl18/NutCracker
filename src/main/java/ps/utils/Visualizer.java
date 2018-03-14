@@ -50,7 +50,7 @@ public class Visualizer {
         String body = html;
         htmlString = htmlString.replace("$title", title);
         htmlString = htmlString.replace("$body", body);
-        File newHtmlFile = new File("./evaluation/" + title + ".html");
+        File newHtmlFile = new File("../evaluation/" + title + ".html");
         Files.write(htmlString, newHtmlFile, Charset.defaultCharset());
         return newHtmlFile.getAbsolutePath();
     }
