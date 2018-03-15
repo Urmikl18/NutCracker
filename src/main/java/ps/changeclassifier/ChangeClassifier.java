@@ -23,8 +23,7 @@ public class ChangeClassifier {
     public static ArrayList<ChangeTag> getClassification(ArrayList<Change> changes, String text1, String text2) {
         ArrayList<ChangeTag> ch_class = new ArrayList<ChangeTag>(changes.size());
         for (int i = 0; i < changes.size(); ++i) {
-            Tag tag = ChangeClassifier.getTag(changes.get(i), text1, text2);
-            ch_class.add(new ChangeTag(changes.get(i), tag));
+            ch_class.add(ChangeClassifier.classifyChange(changes.get(i), text1, text2));
             System.out.println((i + 1) + "/" + changes.size() + ": " + ch_class.get(i));
         }
         return ch_class;
@@ -33,65 +32,69 @@ public class ChangeClassifier {
     /*
     Assigns each change a tag that describes change's meaning.
     */
-    private static Tag getTag(Change change, String text1, String text2) {
-        boolean citation = ChangeAnalyzer.isCitation(change);
-        if (citation) {
-            return Tag.CITATION;
-        }
+    private static ChangeTag classifyChange(Change change, String text1, String text2) {
+        Change changed_citation = ChangeDetector.extendChange(change, text1, text2, 0);
+        // boolean citation = ChangeAnalyzer.isCitation(changed_citation);
+        // if (citation) {
+        //     return new ChangeTag(changed_citation, Tag.CITATION);
+        // }
 
-        boolean undefined = ChangeAnalyzer.isUndefined(change);
-        if (undefined) {
-            return Tag.UNDEFINED;
-        }
+        // boolean formatting = ChangeAnalyzer.isFormatting(changed_citation, text1, text2);
+        // if (formatting) {
+        //     return new ChangeTag(changed_citation, Tag.FORMATTING);
+        // }
 
-        Change changed_word = ChangeDetector.extendChange(change, text1, text2, 1);
-        boolean spelling = ChangeAnalyzer.isSpelling(changed_word);
-        if (spelling) {
-            return Tag.SPELLING;
-        }
+        Change changed_word = ChangeDetector.extendChange(changed_citation, text1, text2, 1);
+        // int spelling = ChangeAnalyzer.isSpelling(changed_word);
+        // switch (spelling) {
+        // case -1:
+        //     return new ChangeTag(changed_word, Tag.UNDEFINED);
+        // case 0:
+        //     break;
+        // case 1:
+        //     return new ChangeTag(changed_word, Tag.SPELLING);
+        // }
 
-        boolean formatting = ChangeAnalyzer.isFormatting(changed_word);
-        if (formatting) {
-            return Tag.FORMATTING;
-        }
-
-        int sub_sim = ChangeAnalyzer.substitutionSimilarity(changed_word);
-        switch (sub_sim) {
-        case -1:
-            break;
-        case 0:
-            return Tag.UNRELATED_TERM;
-        case 1:
-            return Tag.RELATED_TERM;
-        case 2:
-            return Tag.SYNONYM;
-        }
+        // int sub_sim = ChangeAnalyzer.substitutionSimilarity(changed_word);
+        // switch (sub_sim) {
+        // // check something else
+        // case -2:
+        //     break;
+        // case -1:
+        //     break;
+        // case 0:
+        //     return new ChangeTag(changed_word, Tag.UNRELATED_TERM);
+        // case 1:
+        //     return new ChangeTag(changed_word, Tag.RELATED_TERM);
+        // case 2:
+        //     return new ChangeTag(changed_word, Tag.INTERCHANGEABLE);
+        // }
 
         if (!changed_word.getBefore().equals("") && !changed_word.getAfter().equals("")) {
 
             Change changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2);
 
-            boolean grammar = ChangeAnalyzer.isGrammar(changed_sent);
-            if (grammar) {
-                return Tag.GRAMMAR;
-            }
+            //     boolean grammar = ChangeAnalyzer.isGrammar(changed_sent);
+            //     if (grammar) {
+            //         return new ChangeTag(changed_sent, Tag.GRAMMAR);
+            //     }
 
-            boolean rephrasing = ChangeAnalyzer.isRephrasing(changed_sent);
+            boolean rephrasing = ChangeAnalyzer.isRephrasing(changed_citation, changed_word, changed_sent);
             if (rephrasing) {
-                return Tag.REPHRASING;
+                return new ChangeTag(changed_sent, Tag.REPHRASING);
             }
         }
 
-        int topic_sim = ChangeAnalyzer.relatedTopics(change, text1);
-        switch (topic_sim) {
-        case -1:
-            break;
-        case 0:
-            return Tag.MINOR_TOPIC_CHANGE;
-        case 1:
-            return Tag.MAJOR_TOPIC_CHANGE;
-        }
-        return Tag.UNDEFINED;
+        // int topic_sim = ChangeAnalyzer.relatedTopics(change, text1);
+        // switch (topic_sim) {
+        // case -1:
+        //     break;
+        // case 0:
+        //     return new ChangeTag(change, Tag.MINOR_TOPIC_CHANGE);
+        // case 1:
+        //     return new ChangeTag(change, Tag.MAJOR_TOPIC_CHANGE);
+        // }
+        return new ChangeTag(change, Tag.UNDEFINED);
     }
 
 }

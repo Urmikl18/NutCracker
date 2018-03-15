@@ -11,6 +11,7 @@ import ps.changeclassifier.ChangeClassifier;
 import ps.changeclassifier.ChangeDetector;
 import ps.models.Change;
 import ps.models.ChangeTag;
+import ps.utils.LP;
 import ps.utils.Visualizer;
 
 /**
@@ -43,6 +44,11 @@ public class NutCracker {
      * </ol>
      */
     public static ArrayList<ChangeTag> getChangeClassification(String text1, String text2) {
+        // 0. Preprocessing
+        // Fill dictionary
+        String dict = "src/main/resources/dictionary/dict60.txt";
+        // String dict = "src/main/resources/dictionary/dict70.txt";
+        LP.fillDictionary(dict);
         // 1. Detect Changes
         ArrayList<Change> changes = ChangeDetector.getChanges(text1, text2);
         // 2. Analyze Changes

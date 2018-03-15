@@ -36,12 +36,11 @@ public class ChangeDetector {
      */
     public static ArrayList<Change> getChanges(String text1, String text2) {
         LinkedList<Diff> deltas = dmp.diff_main(text1, text2);
-        dmp.diff_cleanupSemantic(deltas);
+        // dmp.diff_cleanupSemantic(deltas);
         Diff[] diffs = deltas.toArray(new Diff[deltas.size()]);
         ArrayList<PositionedDiff> pos_diffs = getDiffPositions(diffs);
         ArrayList<Change> before_after = getChangedText(pos_diffs, text1, text2);
-        ArrayList<Change> ext_changes = extendChanges(before_after, text1, text2);
-        return ext_changes;
+        return before_after;
     }
 
     /*
@@ -111,22 +110,6 @@ public class ChangeDetector {
                 return new ArrayList<Change>(changes.subList(0, changes.size()));
             }
         }
-    }
-
-    /*
-        Extend modified text to full entities:
-        <ul>
-        <li>retrieve the whole citation if part of it was changed;</li>
-        <li>extend changes to full words;</li>
-        <li>extend changes to full sentences.</li>
-        </ul>
-    */
-    private static ArrayList<Change> extendChanges(ArrayList<Change> diffs, String text1, String text2) {
-        ArrayList<Change> res = new ArrayList<Change>();
-        for (int i = 0; i < diffs.size(); ++i) {
-            res.add(extendChange(diffs.get(i), text1, text2, 0));
-        }
-        return res;
     }
 
     protected static Change extendChange(Change c, String text1, String text2, int option) {

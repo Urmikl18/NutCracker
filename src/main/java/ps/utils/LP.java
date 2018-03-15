@@ -2,8 +2,11 @@ package ps.utils;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.BreakIterator;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -11,6 +14,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.StopFilter;
@@ -26,6 +30,8 @@ import edu.cmu.lti.jawjaw.pobj.POS;
  * Language processing module.
  */
 public class LP {
+
+    private static final TreeSet<String> dictionary = new TreeSet<>();
 
     /**
      * @param str string to be tested.
@@ -63,7 +69,6 @@ public class LP {
     public static boolean isQuote(String str) {
         Pattern p1 = Pattern.compile(RegEx.QUOTE1);
         Pattern p2 = Pattern.compile(RegEx.QUOTE2);
-
         Matcher m1 = p1.matcher(str);
         Matcher m2 = p2.matcher(str);
 
@@ -74,13 +79,96 @@ public class LP {
      * @param str string to be tested.
      * @return true, if a word is in a dictionary, false, otherwise.
      */
-    public static boolean inDictionary(String word) throws IOException {
-        Set<String> s1 = JAWJAW.findSynonyms(word, POS.a);
-        Set<String> s2 = JAWJAW.findSynonyms(word, POS.n);
-        Set<String> s3 = JAWJAW.findSynonyms(word, POS.r);
-        Set<String> s4 = JAWJAW.findSynonyms(word, POS.v);
+    public static boolean inDictionary(String word) {
+        return dictionary.contains(word);
+    }
 
-        return !(s1.isEmpty() && s2.isEmpty() && s3.isEmpty() && s4.isEmpty());
+    public static void fillDictionary(String dict) {
+        try (Stream<String> stream = Files.lines(Paths.get(dict))) {
+            stream.forEach(w -> dictionary.add(w.toLowerCase()));
+        } catch (IOException e) {
+            System.out.println("Can't fill the dictionary");
+        }
+    }
+
+    private static boolean isVowel(char c) {
+        return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u';
+    }
+
+    private static boolean addE(String tmp) {
+        if ((tmp.charAt(tmp.length() - 1) == 't' || tmp.charAt(tmp.length() - 1) == 's'
+                || tmp.charAt(tmp.length() - 1) == 'z') && isVowel(tmp.charAt(tmp.length() - 2))) {
+            return true;
+        } else if (tmp.charAt(tmp.length() - 1) == 'r'
+                && (tmp.charAt(tmp.length() - 2) == 'u' && tmp.charAt(tmp.length() - 3) != 'o')
+                || tmp.charAt(tmp.length() - 2) == 'i') {
+            return true;
+        } else if (tmp.charAt(tmp.length() - 1) == 's' && tmp.charAt(tmp.length() - 2) == 'a') {
+            return true;
+        } else if (tmp.charAt(tmp.length() - 1) == 'c' && tmp.charAt(tmp.length() - 2) == 'u') {
+            return true;
+        } else if (tmp.endsWith("rg")) {
+            return true;
+        }
+        return false;
+    }
+
+    public static ArrayList<String> stem(String word, String pos) {
+        ArrayList<String> result = new ArrayList<>(2);
+        result.add(word);
+        result.add(pos);
+        if (pos.startsWith("NN") || pos.startsWith("CD")) {
+            if (pos.equals("NNS")) {
+                if (word.endsWith("s"))
+                    result.set(0, word.substring(0, word.length() - 1));
+            } else if (pos.equals("NNP")) {
+                result.set(0, word.substring(0, 1).toUpperCase() + word.substring(1));
+            } else if (pos.equals("NNPS")) {
+                String tmp = word;
+                if (word.endsWith("s"))
+                    tmp = word.substring(0, word.length() - 1);
+                result.set(0, tmp.substring(0, 1).toUpperCase() + tmp.substring(1));
+            } else {
+                result.set(0, word);
+            }
+            result.set(1, "n");
+        } else if (pos.startsWith("VB")) {
+            String tmp = word;
+            if (pos.equals("VBD") || pos.equals("VBN")) {
+                if (word.endsWith("ed")) {
+                    tmp = word.substring(0, word.length() - 2);
+                    if (tmp.endsWith("i")) {
+                        tmp = tmp.substring(0, tmp.length() - 1) + "y";
+                    } else if (tmp.charAt(tmp.length() - 1) == tmp.charAt(tmp.length() - 2)) {
+                        tmp = tmp.substring(0, tmp.length() - 1);
+                    } else if (addE(tmp)) {
+                        tmp += "e";
+                    }
+                }
+            } else if (pos.equals("VBG")) {
+                if (word.endsWith("ing")) {
+                    tmp = word.substring(0, word.length() - 3);
+                    if (tmp.charAt(tmp.length() - 2) == tmp.charAt(tmp.length() - 3)) {
+                        tmp = tmp.substring(0, tmp.length() - 1);
+                    }
+                }
+            }
+            result.set(0, tmp);
+            result.set(1, "v");
+        } else if (pos.startsWith("JJ")) {
+            result.set(0, word);
+            result.set(1, "a");
+        } else if (pos.startsWith("RB")) {
+            result.set(0, word);
+            result.set(1, "r");
+        } else if (pos.startsWith("MD")) {
+            result.set(0, word);
+            result.set(1, "v");
+        } else {
+            result.set(0, word);
+            result.set(1, null);
+        }
+        return result;
     }
 
     /**
@@ -107,7 +195,7 @@ public class LP {
      * @return positions of the closest sentence that contains refPos1 and refPos2
      */
     public static int[] nearestSentence(String text, int refPos1, int refPos2) {
-        Pattern p = Pattern.compile("([a-zA-Z\\-\\'0-9]+(\\.|\\. |'(s |re |t |m |ll )|s' | )?)+");
+        Pattern p = Pattern.compile(RegEx.SENTENCE);
         Matcher m = p.matcher(text);
         while (m.find()) {
             if (m.start() <= refPos1 && refPos2 <= m.end()) {
@@ -154,6 +242,16 @@ public class LP {
             }
         }
         return null;
+    }
+
+    public static int numberOfSentences(String s) {
+        Pattern p = Pattern.compile("^" + RegEx.SENTENCE + "$");
+        Matcher m = p.matcher(s);
+        int sentCount = 0;
+        while (m.find()) {
+            ++sentCount;
+        }
+        return sentCount;
     }
 
     /**
