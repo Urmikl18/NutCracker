@@ -33,7 +33,7 @@ public class ChangeClassifier {
     Assigns each change a tag that describes change's meaning.
     */
     private static ChangeTag classifyChange(Change change, String text1, String text2) {
-        Change changed_citation = ChangeDetector.extendChange(change, text1, text2, 0);
+        Change changed_citation = ChangeDetector.extendChange(change, text1, text2, 0, false);
         // boolean citation = ChangeAnalyzer.isCitation(changed_citation);
         // if (citation) {
         //     return new ChangeTag(changed_citation, Tag.CITATION);
@@ -44,7 +44,7 @@ public class ChangeClassifier {
         //     return new ChangeTag(changed_citation, Tag.FORMATTING);
         // }
 
-        Change changed_word = ChangeDetector.extendChange(changed_citation, text1, text2, 1);
+        Change changed_word = ChangeDetector.extendChange(changed_citation, text1, text2, 1, false);
         // int spelling = ChangeAnalyzer.isSpelling(changed_word);
         // switch (spelling) {
         // case -1:
@@ -61,7 +61,7 @@ public class ChangeClassifier {
         // case -2:
         //     break;
         // case -1:
-        //     break;
+        //     return new ChangeTag(changed_word, Tag.UNDEFINED);
         // case 0:
         //     return new ChangeTag(changed_word, Tag.UNRELATED_TERM);
         // case 1:
@@ -70,21 +70,23 @@ public class ChangeClassifier {
         //     return new ChangeTag(changed_word, Tag.INTERCHANGEABLE);
         // }
 
-        if (!changed_word.getBefore().equals("") && !changed_word.getAfter().equals("")) {
+        Change changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2, false);
 
-            Change changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2);
-
-            //     boolean grammar = ChangeAnalyzer.isGrammar(changed_sent);
-            //     if (grammar) {
-            //         return new ChangeTag(changed_sent, Tag.GRAMMAR);
-            //     }
-
-            boolean rephrasing = ChangeAnalyzer.isRephrasing(changed_citation, changed_word, changed_sent);
-            if (rephrasing) {
-                return new ChangeTag(changed_sent, Tag.REPHRASING);
-            }
+        int grammar = ChangeAnalyzer.isGrammar(changed_sent);
+        switch (grammar) {
+        case -1:
+            break;
+        case 0:
+            return new ChangeTag(change, Tag.UNDEFINED);
+        case 1:
+            return new ChangeTag(changed_sent, Tag.GRAMMAR);
         }
 
+        // boolean rephrasing = ChangeAnalyzer.isRephrasing(changed_sent);
+        // if (rephrasing) {
+        //     return new ChangeTag(changed_sent, Tag.REPHRASING);
+        // }
+        changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2, true);
         // int topic_sim = ChangeAnalyzer.relatedTopics(change, text1);
         // switch (topic_sim) {
         // case -1:

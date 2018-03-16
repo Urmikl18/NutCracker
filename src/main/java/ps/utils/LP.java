@@ -1,12 +1,18 @@
 package ps.utils;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.BreakIterator;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -19,7 +25,6 @@ import java.util.stream.Stream;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.en.EnglishMinimalStemFilter;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
@@ -209,6 +214,23 @@ public class LP {
      * @param text initial text.
      * @param refPos1 left-most position.
      * @param refPos2 right-most position.
+     * @return positions of the closest sentence that contains refPos1 and refPos2
+     */
+    public static int[] nearestParagraph(String text, int refPos1, int refPos2) {
+        Pattern p = Pattern.compile(RegEx.PARAGRAPH);
+        Matcher m = p.matcher(text);
+        while (m.find()) {
+            if (m.start() <= refPos1 && refPos2 <= m.end()) {
+                return new int[] { m.start(), m.end() };
+            }
+        }
+        return new int[] { refPos1, refPos2 };
+    }
+
+    /**
+     * @param text initial text.
+     * @param refPos1 left-most position.
+     * @param refPos2 right-most position.
      * @return positions of the closest in-text citation that contains refPos1 and refPos2
      */
     public static int[] nearestCitation(String text, int refPos1, int refPos2) {
@@ -254,6 +276,17 @@ public class LP {
         return sentCount;
     }
 
+    public static int numberOfParagraphs(String s) {
+        Pattern p = Pattern.compile(RegEx.PARAGRAPH);
+        Matcher m = p.matcher(s);
+        int paraCount = -1;
+        while (m.find()) {
+            ++paraCount;
+        }
+        return paraCount;
+
+    }
+
     /**
      * @param a vector representation of the first sentence.
      * @param b vector representation of the second sentence.
@@ -292,26 +325,69 @@ public class LP {
         return res;
     }
 
+    public static String checkGrammar(String sentence) {
+        HttpURLConnection connection = null;
+        String urlParameters = "text=" + sentence + "&language=en-US";
+        try {
+            //Create connection
+            URL url = new URL("http://localhost:8081/v2/check");
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            connection.setRequestProperty("Content-Length", Integer.toString(urlParameters.getBytes().length));
+            connection.setRequestProperty("Content-Language", "en-US");
+
+            connection.setUseCaches(false);
+            connection.setDoOutput(true);
+
+            //Send request
+            DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
+            wr.writeBytes(urlParameters);
+            wr.close();
+
+            //Get Response  
+            InputStream is = connection.getInputStream();
+            BufferedReader rd = new BufferedReader(new InputStreamReader(is));
+            StringBuffer response = new StringBuffer(); // or StringBuffer if Java version 5+
+            String line;
+            while ((line = rd.readLine()) != null) {
+                response.append(line);
+                response.append('\r');
+            }
+            rd.close();
+            return response.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
     /**
      * @param text1 initial version of the document
      * @param text2 modified version of the document
      * @return a list of features (covered WordNet domains) in texts
      */
     public static ArrayList<String> getFeatures(String text1, String text2) {
-        Set<String> w1 = new TreeSet<String>(tokenizeStopStem(text1, true, true));
-        Set<String> w2 = new TreeSet<String>(tokenizeStopStem(text2, true, true));
-        Set<String> w = new TreeSet<>(w1);
-        w.addAll(w2);
+        ArrayList<String> w1 = tokenizeStop(text1, true);
+        ArrayList<String> w2 = tokenizeStop(text2, true);
+        List<String> t1 = FastTag.tag(w1);
+        List<String> t2 = FastTag.tag(w2);
         Set<String> d = new TreeSet<>();
-        for (String word : w) {
-            for (POS pos : POS.values()) {
-                try {
-                    d.addAll(JAWJAW.findInDomains(word, pos));
-                } catch (Exception e) {
-                    continue;
-                }
-            }
+
+        for (int i = 0; i < w1.size(); ++i) {
+            ArrayList<String> wp = LP.stem(w1.get(i), t1.get(i));
+            d.addAll(JAWJAW.findInDomains(wp.get(0), POS.valueOf(wp.get(1))));
         }
+        for (int i = 0; i < w2.size(); ++i) {
+            ArrayList<String> wp = LP.stem(w2.get(i), t2.get(i));
+            d.addAll(JAWJAW.findInDomains(wp.get(0), POS.valueOf(wp.get(1))));
+        }
+
         ArrayList<String> features = new ArrayList<String>(d);
         features.sort((d1, d2) -> d1.compareTo(d2));
         return features;
@@ -323,25 +399,28 @@ public class LP {
      */
     public static Map<String, Double> getDistribution(ArrayList<String> features, String text) {
         Map<String, Double> dist = new TreeMap<>();
-        ArrayList<String> words = tokenizeStopStem(text, true, true);
+        ArrayList<String> words = tokenizeStop(text, true);
+        List<String> tags = FastTag.tag(words);
         Set<String> domains = new TreeSet<>();
+
+        // Initialize probability distribution
         for (String f : features) {
             dist.put(f, 0.0);
         }
+
         int totalCount = 0;
-        for (String word : words) {
-            for (POS pos : POS.values()) {
-                try {
-                    domains = JAWJAW.findInDomains(word, pos);
-                } catch (Exception e) {
-                    domains = new TreeSet<>();
-                }
-                for (String domain : domains) {
-                    if (dist.containsKey(domain)) {
-                        ++totalCount;
-                        double freq = dist.get(domain);
-                        dist.put(domain, freq + 1);
-                    }
+        for (int i = 0; i < words.size(); ++i) {
+            ArrayList<String> wp = LP.stem(words.get(i), tags.get(i));
+            try {
+                domains = JAWJAW.findInDomains(wp.get(0), POS.valueOf(wp.get(1)));
+            } catch (Exception e) {
+                domains = new TreeSet<>();
+            }
+            for (String domain : domains) {
+                if (dist.containsKey(domain)) {
+                    ++totalCount;
+                    double freq = dist.get(domain);
+                    dist.put(domain, freq + 1);
                 }
             }
         }
@@ -396,15 +475,12 @@ public class LP {
      * @param text to be parsed
      * @return A list of stemmed words without stop-words
      */
-    public static ArrayList<String> tokenizeStopStem(String text, boolean stop, boolean stem) {
+    public static ArrayList<String> tokenizeStop(String text, boolean stop) {
         ArrayList<String> words = new ArrayList<>();
         Analyzer analyzer = new StandardAnalyzer();
         TokenStream tokenStream = analyzer.tokenStream(null, new StringReader(text));
         if (stop) {
             tokenStream = new StopFilter(tokenStream, StandardAnalyzer.ENGLISH_STOP_WORDS_SET);
-        }
-        if (stem) {
-            tokenStream = new EnglishMinimalStemFilter(tokenStream);
         }
 
         final CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);

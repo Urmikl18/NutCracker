@@ -17,4 +17,5 @@ public class RegEx {
     public static final String TRIM_END = "(\\.|,|!|\\?|\\s)$";
     public static final String SYMBOL = "\\W+";
     public static final String SENTENCE = "([a-zA-Z\\-\\'0-9]+(\\.|\\. |'(s |re |t |m |ll )|s' | )?)+";
+    public static final String PARAGRAPH = "[^\\r\\n]+((\\r|\\n|\\r\\n))*";
 }

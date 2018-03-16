@@ -1,6 +1,5 @@
 package ps.changeclassifier;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -8,21 +7,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.lucene.analysis.en.EnglishMinimalStemmer;
-import org.languagetool.JLanguageTool;
-import org.languagetool.language.AmericanEnglish;
-import org.languagetool.rules.RuleMatch;
-import org.languagetool.rules.spelling.SpellingCheckRule;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import edu.cmu.lti.jawjaw.JAWJAW;
 import edu.cmu.lti.jawjaw.pobj.POS;
 import edu.cmu.lti.lexical_db.ILexicalDatabase;
 import edu.cmu.lti.lexical_db.NictWordNet;
-import edu.cmu.lti.ws4j.Relatedness;
 import edu.cmu.lti.ws4j.impl.HirstStOnge;
 import edu.cmu.lti.ws4j.impl.JiangConrath;
-import edu.cmu.lti.ws4j.impl.Lesk;
-import edu.cmu.lti.ws4j.util.PorterStemmer;
 import edu.cmu.lti.ws4j.util.WS4JConfiguration;
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Diff;
@@ -91,8 +84,8 @@ public class ChangeAnalyzer {
     5. Otherwise, keep going.
     */
     protected static int isSpelling(Change change) {
-        ArrayList<String> w1 = LP.tokenizeStopStem(change.getBefore(), false, false);
-        ArrayList<String> w2 = LP.tokenizeStopStem(change.getAfter(), false, false);
+        ArrayList<String> w1 = LP.tokenizeStop(change.getBefore(), false);
+        ArrayList<String> w2 = LP.tokenizeStop(change.getAfter(), false);
         String before = "";
         String after = "";
         if (w1.size() == 1 && w2.size() == 1) {
@@ -131,23 +124,26 @@ public class ChangeAnalyzer {
     8. Threshold of 5 (min: 0, max: 16).
     */
     protected static int substitutionSimilarity(Change change) {
-        ArrayList<String> w1 = LP.tokenizeStopStem(change.getBefore(), false, false);
-        ArrayList<String> w2 = LP.tokenizeStopStem(change.getAfter(), false, false);
+        // get words
+        ArrayList<String> w1 = LP.tokenizeStop(change.getBefore(), false);
+        ArrayList<String> w2 = LP.tokenizeStop(change.getAfter(), false);
         String before, after;
         String tag1, tag2;
         POS pos1 = null, pos2 = null;
 
+        // substitution of single words
         if (w1.size() == 1 && w2.size() == 1) {
             before = w1.get(0);
             after = w2.get(0);
-
+            // both words should be in dictionary
             if (!LP.inDictionary(before) || !LP.inDictionary(after)) {
-                return -1;
+                return -2;
             }
-
+            // assing POS-tag using FastTag
             tag1 = FastTag.tag(w1).get(0);
             tag2 = FastTag.tag(w2).get(0);
 
+            // similarity measures can compare only words with same POS
             boolean cond1 = tag1.substring(0, 2).equals(tag2.substring(0, 2));
             boolean cond2 = ((tag1.equals("MD") && tag2.startsWith("VB"))
                     || (tag1.startsWith("VB") && tag2.equals("MD")));
@@ -155,9 +151,10 @@ public class ChangeAnalyzer {
                     || (tag1.startsWith("NN") && tag2.equals("CD")));
 
             if (!cond1 && !cond2 && !cond3) {
-                return -2;
+                return -1;
             }
 
+            // modify POS-tags to match the ones of WS4J and stem words if needed
             ArrayList<String> tmp1 = LP.stem(before, tag1);
             ArrayList<String> tmp2 = LP.stem(after, tag2);
 
@@ -166,18 +163,20 @@ public class ChangeAnalyzer {
             after = tmp2.get(0);
             pos2 = POS.valueOf(tmp2.get(1));
 
+            // if no POS-tag assigned, stop because no valid decision can be made
             if (pos1 == null || pos2 == null) {
                 return -1;
             }
 
+            // check if words are synonyms
             Set<String> s = JAWJAW.findSynonyms(before, pos1);
-
             for (String str : s) {
                 if (str.equals(after)) {
                     return 2;
                 }
             }
 
+            // compute similarity score
             before = before + "#" + pos1;
             after = after + "#" + pos2;
             WS4JConfiguration.getInstance().setMFS(false);
@@ -194,9 +193,14 @@ public class ChangeAnalyzer {
 
     /*
     Checks if change was rephrasing.
-    Uses Fernando and Stevenson semantic similarity measure.
+    1. Check is sentence contains any changes that have not been previously analyzed.
+    2. Rephrasing is a property of sentences, but not more than two.
+    3. Tokenize sentences, assign POS-tags, stem if needed.
+    4. Compute binary word vectors.
+    5. Compute similarity matrix using Jiang-Conrath similarity.
+    6. Compute Fernando-Stevenson similarity score.
     */
-    protected static boolean isRephrasing(Change changed_chars, Change changed_word, Change changed_sent) {
+    protected static boolean isRephrasing(Change changed_sent) {
         ArrayList<Change> localChanges = ChangeDetector.getChanges(changed_sent.getBefore(), changed_sent.getAfter());
         // things that can't be rephrasing
         boolean cond1, cond2, cond3, cond4, cond5;
@@ -220,8 +224,8 @@ public class ChangeAnalyzer {
             return false;
         }
 
-        ArrayList<String> words1 = LP.tokenizeStopStem(changed_sent.getBefore(), true, false);
-        ArrayList<String> words2 = LP.tokenizeStopStem(changed_sent.getAfter(), true, false);
+        ArrayList<String> words1 = LP.tokenizeStop(changed_sent.getBefore(), true);
+        ArrayList<String> words2 = LP.tokenizeStop(changed_sent.getAfter(), true);
 
         if (words1.isEmpty() || words2.isEmpty()) {
             return false;
@@ -282,44 +286,100 @@ public class ChangeAnalyzer {
 
     /*
     Checks if a change was grammar correction.
-    Rule-based approach by Daniel Naber.
+    1. Check is sentence contains any changes that have not been previously analyzed.
+    2. Grammar is a property of a sentence.
+    3. Check grammar in both sentences.
+    4. If both are correct, it may be rephrasing or topic changes.
+    5. If both are incorrect or correct sentence was turned into incorrect, no decision can be made.
+    6. If original version was incorrect, and modified is correct, then it was grammar change.
     */
-    protected static boolean isGrammar(Change change) {
-        boolean correct_before = false, correct_after = false;
-        JLanguageTool langTool = new JLanguageTool(new AmericanEnglish());
-        List<RuleMatch> matches = null;
-        try {
-            matches = langTool.check(change.getBefore());
-            matches.removeIf(rule -> rule.getRule() instanceof SpellingCheckRule);
-            correct_before = matches.isEmpty();
-
-            matches = langTool.check(change.getAfter());
-            matches.removeIf(rule -> rule.getRule() instanceof SpellingCheckRule);
-            correct_after = matches.isEmpty();
-        } catch (IOException e) {
-            return false;
+    protected static int isGrammar(Change changed_sent) {
+        ArrayList<Change> localChanges = ChangeDetector.getChanges(changed_sent.getBefore(), changed_sent.getAfter());
+        // things that can't be rephrasing
+        boolean cond1, cond2, cond3, cond4, cond5, cond6;
+        boolean other = true;
+        for (Change c : localChanges) {
+            cond1 = isCitation(c);
+            cond2 = isFormatting(c, changed_sent.getBefore(), changed_sent.getAfter());
+            cond3 = isSpelling(c) != 0;
+            cond4 = LP.isNumber(c.getBefore()) || LP.isSymbol(c.getBefore());
+            cond5 = LP.isNumber(c.getAfter()) || LP.isSymbol(c.getAfter());
+            cond6 = substitutionSimilarity(c) >= 0;
+            other = cond1 || cond2 || cond3 || (cond4 && cond5) || cond6;
         }
-        return !correct_before && correct_after;
+        if (other) {
+            return -1;
+        }
+
+        int sentCount1 = LP.numberOfSentences(changed_sent.getBefore());
+        int sentCount2 = LP.numberOfSentences(changed_sent.getAfter());
+
+        if (sentCount1 != 1 || sentCount2 != 1) {
+            return -1;
+        }
+        // TODO: need a better checker
+        String check1 = LP.checkGrammar(changed_sent.getBefore());
+        String check2 = LP.checkGrammar(changed_sent.getAfter());
+        JSONObject grammar1 = new JSONObject(check1);
+        JSONObject grammar2 = new JSONObject(check2);
+        JSONArray matches1 = (JSONArray) grammar1.get("matches");
+        JSONArray matches2 = (JSONArray) grammar2.get("matches");
+        boolean correct_before = matches1.length() == 0;
+        boolean correct_after = matches2.length() == 0;
+        if (!correct_before && !correct_after) {
+            return 0;
+        } else if (correct_before && !correct_after) {
+            return 0;
+        } else if (correct_before && correct_after) {
+            return -1;
+        } else {
+            return 1;
+        }
     }
 
     /*
     Checks how a change influenced the topic of a text.
-    Novel feature-based approach inspired by topic modelling and feature-based word similarity measures.
+    1. Should be performed only if more than three sentences have been modified.
+    2. Change's importance is calculated in context of modified paragraph or entire text, depending on its size.
+    3. Determine features, which are domains of words from two text fragments.
+    4. Determine two probability distributions.
+    5. Calculate Jensen-Shannon divergence between those distributions.
     */
-    protected static int relatedTopics(Change change, String text) {
-        String before = "", after = "";
-        if (change.getBefore().length() < change.getAfter().length()) {
-            before = text;
-            after = change.getAfter();
-        } else if (change.getAfter().equals("")) {
-            before = text;
-            after = text.substring(change.getPos1())
-                    + text.substring(change.getPos1() + change.getBefore().length(), text.length());
-        } else {
-            before = text;
-            after = text.substring(change.getPos1()) + change.getAfter()
-                    + text.substring(change.getPos1() + change.getBefore().length(), text.length());
+    protected static int relatedTopics(Change changed_sent, String text) {
+        int sentCount1 = LP.numberOfSentences(changed_sent.getBefore());
+        int sentCount2 = LP.numberOfSentences(changed_sent.getAfter());
+
+        // too short of a change to be something important
+        if (sentCount1 < 3 && sentCount2 < 3) {
+            return -1;
         }
+
+        // pick text fragments that need to be compared
+        String before = "", after = "";
+
+        // 1. If only sentences, then check paragraph.
+        // 2. If paragraph, then entire text.
+        int paraCount1 = LP.numberOfParagraphs(changed_sent.getBefore());
+        int paraCount2 = LP.numberOfParagraphs(changed_sent.getAfter());
+
+        if (paraCount1 > 1 || paraCount2 > 1) {
+            before = text;
+            after = text.substring(0, changed_sent.getPos1()) + changed_sent.getAfter()
+                    + text.substring(changed_sent.getPos1() + changed_sent.getBefore().length());
+        } else {
+            int[] para = LP.nearestParagraph(text, changed_sent.getPos1(),
+                    changed_sent.getPos1() + changed_sent.getBefore().length());
+            before = text.substring(para[0], para[1]);
+            after = text.substring(para[0], changed_sent.getPos1()) + changed_sent.getAfter()
+                    + text.substring(changed_sent.getPos1() + changed_sent.getBefore().length(), para[1]);
+            if (before.equals(changed_sent.getBefore())) {
+                before = text;
+                after = text.substring(0, changed_sent.getPos1()) + changed_sent.getAfter()
+                        + text.substring(changed_sent.getPos1() + changed_sent.getBefore().length());
+            }
+
+        }
+
         ArrayList<String> features = LP.getFeatures(before, after);
         if (features.isEmpty()) {
             return -1;
@@ -351,7 +411,7 @@ public class ChangeAnalyzer {
         }
 
         double score = LP.jsd(dist1, dist2);
-        return score > 0.5 ? 0 : 1;
+        return score >= 0.5 ? 0 : 1;
     }
 
 }

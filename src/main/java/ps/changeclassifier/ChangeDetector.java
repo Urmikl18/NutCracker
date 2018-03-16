@@ -112,7 +112,7 @@ public class ChangeDetector {
         }
     }
 
-    protected static Change extendChange(Change c, String text1, String text2, int option) {
+    protected static Change extendChange(Change c, String text1, String text2, int option, boolean ignoreEmpty) {
         int pos1 = 0, pos2 = 0;
         String before = "", after = "";
         int[] extension = new int[2];
@@ -132,6 +132,12 @@ public class ChangeDetector {
             pos2 = extension[0];
             after = text2.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
                     .replaceAll(RegEx.TRIM_END, "");
+            if (ignoreEmpty) {
+                if (c.getBefore().equals(""))
+                    before = c.getBefore();
+                if (c.getAfter().equals(""))
+                    after = c.getAfter();
+            }
             break;
         }
         case 1: {
@@ -143,6 +149,12 @@ public class ChangeDetector {
             pos2 = extension[0];
             after = text2.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
                     .replaceAll(RegEx.TRIM_END, "");
+            if (ignoreEmpty) {
+                if (c.getBefore().equals(""))
+                    before = c.getBefore();
+                if (c.getAfter().equals(""))
+                    after = c.getAfter();
+            }
             break;
         }
         case 2: {
@@ -154,6 +166,12 @@ public class ChangeDetector {
             pos2 = extension[0];
             after = text2.substring(extension[0], extension[1]).replaceAll(RegEx.TRIM_START, "")
                     .replaceAll(RegEx.TRIM_END, "");
+            if (ignoreEmpty) {
+                if (c.getBefore().equals(""))
+                    before = c.getBefore();
+                if (c.getAfter().equals(""))
+                    after = c.getAfter();
+            }
             break;
         }
         default: {
