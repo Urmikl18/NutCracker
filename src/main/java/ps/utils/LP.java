@@ -101,19 +101,21 @@ public class LP {
     }
 
     private static boolean addE(String tmp) {
-        if ((tmp.charAt(tmp.length() - 1) == 't' || tmp.charAt(tmp.length() - 1) == 's'
-                || tmp.charAt(tmp.length() - 1) == 'z') && isVowel(tmp.charAt(tmp.length() - 2))) {
-            return true;
-        } else if (tmp.charAt(tmp.length() - 1) == 'r'
-                && (tmp.charAt(tmp.length() - 2) == 'u' && tmp.charAt(tmp.length() - 3) != 'o')
-                || tmp.charAt(tmp.length() - 2) == 'i') {
-            return true;
-        } else if (tmp.charAt(tmp.length() - 1) == 's' && tmp.charAt(tmp.length() - 2) == 'a') {
-            return true;
-        } else if (tmp.charAt(tmp.length() - 1) == 'c' && tmp.charAt(tmp.length() - 2) == 'u') {
-            return true;
-        } else if (tmp.endsWith("rg")) {
-            return true;
+        if (tmp.length() > 3) {
+            if ((tmp.charAt(tmp.length() - 1) == 't' || tmp.charAt(tmp.length() - 1) == 's'
+                    || tmp.charAt(tmp.length() - 1) == 'z') && isVowel(tmp.charAt(tmp.length() - 2))) {
+                return true;
+            } else if (tmp.charAt(tmp.length() - 1) == 'r'
+                    && (tmp.charAt(tmp.length() - 2) == 'u' && tmp.charAt(tmp.length() - 3) != 'o')
+                    || tmp.charAt(tmp.length() - 2) == 'i') {
+                return true;
+            } else if (tmp.charAt(tmp.length() - 1) == 's' && tmp.charAt(tmp.length() - 2) == 'a') {
+                return true;
+            } else if (tmp.charAt(tmp.length() - 1) == 'c' && tmp.charAt(tmp.length() - 2) == 'u') {
+                return true;
+            } else if (tmp.endsWith("rg")) {
+                return true;
+            }
         }
         return false;
     }
@@ -144,7 +146,7 @@ public class LP {
                     tmp = word.substring(0, word.length() - 2);
                     if (tmp.endsWith("i")) {
                         tmp = tmp.substring(0, tmp.length() - 1) + "y";
-                    } else if (tmp.charAt(tmp.length() - 1) == tmp.charAt(tmp.length() - 2)) {
+                    } else if (tmp.length() > 1 && tmp.charAt(tmp.length() - 1) == tmp.charAt(tmp.length() - 2)) {
                         tmp = tmp.substring(0, tmp.length() - 1);
                     } else if (addE(tmp)) {
                         tmp += "e";
@@ -152,10 +154,13 @@ public class LP {
                 }
             } else if (pos.equals("VBG")) {
                 if (word.endsWith("ing")) {
-                    tmp = word.substring(0, word.length() - 3);
-                    if (tmp.charAt(tmp.length() - 2) == tmp.charAt(tmp.length() - 3)) {
-                        tmp = tmp.substring(0, tmp.length() - 1);
+                    if (tmp.length() > 2) {
+                        tmp = word.substring(0, word.length() - 3);
+                        if (tmp.charAt(tmp.length() - 2) == tmp.charAt(tmp.length() - 3)) {
+                            tmp = tmp.substring(0, tmp.length() - 1);
+                        }
                     }
+
                 }
             }
             result.set(0, tmp);

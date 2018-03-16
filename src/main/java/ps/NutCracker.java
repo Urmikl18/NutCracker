@@ -5,7 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.TreeSet;
 
 import ps.changeclassifier.ChangeClassifier;
 import ps.changeclassifier.ChangeDetector;
@@ -53,7 +55,8 @@ public class NutCracker {
         ArrayList<Change> changes = ChangeDetector.getChanges(text1, text2);
         // 2. Analyze Changes
         ArrayList<ChangeTag> class_changes = ChangeClassifier.getClassification(changes, text1, text2);
-        // 3. Return Classification
+        // 3. Cleanup Classification
+        // 4. Return Classification
         return class_changes;
     }
 

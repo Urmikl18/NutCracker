@@ -10,7 +10,7 @@ import ps.models.Change;
  * <li>Change's class of type {@link Tag} 
  * </ol>
  */
-public class ChangeTag {
+public class ChangeTag implements Comparable<ChangeTag> {
     private Change change;
     private Tag tag;
 
@@ -89,5 +89,13 @@ public class ChangeTag {
      */
     public String toString() {
         return "[" + this.tag.toString() + "] " + this.change.toString();
+    }
+
+    public int compareTo(ChangeTag other) {
+        if (this.equals(other)) {
+            return 0;
+        } else {
+            return -1;
+        }
     }
 }

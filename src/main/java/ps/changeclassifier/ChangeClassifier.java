@@ -23,8 +23,9 @@ public class ChangeClassifier {
     public static ArrayList<ChangeTag> getClassification(ArrayList<Change> changes, String text1, String text2) {
         ArrayList<ChangeTag> ch_class = new ArrayList<ChangeTag>(changes.size());
         for (int i = 0; i < changes.size(); ++i) {
-            ch_class.add(ChangeClassifier.classifyChange(changes.get(i), text1, text2));
-            System.out.println((i + 1) + "/" + changes.size() + ": " + ch_class.get(i));
+            ChangeTag ct = ChangeClassifier.classifyChange(changes.get(i), text1, text2);
+            ch_class.add(ct);
+            System.out.println((i + 1) + "/" + changes.size() + ": " + ct);
         }
         return ch_class;
     }
@@ -55,32 +56,32 @@ public class ChangeClassifier {
         //     return new ChangeTag(changed_word, Tag.SPELLING);
         // }
 
-        // int sub_sim = ChangeAnalyzer.substitutionSimilarity(changed_word);
-        // switch (sub_sim) {
-        // // check something else
-        // case -2:
-        //     break;
-        // case -1:
-        //     return new ChangeTag(changed_word, Tag.UNDEFINED);
-        // case 0:
-        //     return new ChangeTag(changed_word, Tag.UNRELATED_TERM);
-        // case 1:
-        //     return new ChangeTag(changed_word, Tag.RELATED_TERM);
-        // case 2:
-        //     return new ChangeTag(changed_word, Tag.INTERCHANGEABLE);
-        // }
+        int sub_sim = ChangeAnalyzer.substitutionSimilarity(changed_word);
+        switch (sub_sim) {
+        // check something else
+        case -2:
+            break;
+        case -1:
+            return new ChangeTag(changed_word, Tag.UNDEFINED);
+        case 0:
+            return new ChangeTag(changed_word, Tag.UNRELATED_TERM);
+        case 1:
+            return new ChangeTag(changed_word, Tag.RELATED_TERM);
+        case 2:
+            return new ChangeTag(changed_word, Tag.INTERCHANGEABLE);
+        }
 
         Change changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2, false);
 
-        int grammar = ChangeAnalyzer.isGrammar(changed_sent);
-        switch (grammar) {
-        case -1:
-            break;
-        case 0:
-            return new ChangeTag(change, Tag.UNDEFINED);
-        case 1:
-            return new ChangeTag(changed_sent, Tag.GRAMMAR);
-        }
+        // int grammar = ChangeAnalyzer.isGrammar(changed_sent);
+        // switch (grammar) {
+        // case -1:
+        //     break;
+        // case 0:
+        //     return new ChangeTag(change, Tag.UNDEFINED);
+        // case 1:
+        //     return new ChangeTag(changed_sent, Tag.GRAMMAR);
+        // }
 
         // boolean rephrasing = ChangeAnalyzer.isRephrasing(changed_sent);
         // if (rephrasing) {
