@@ -1,8 +1,13 @@
 # NutCracker
 
 ## Create Executable
-1. mvn package
-2. Fat JAR: target/nutcracker-jar-with-dependencies.jar
+1. Run `mvn package` in `classifier` folder.
+2. Fat JAR is to be found in `target/nutcracker-jar-with-dependencies.jar`.
+
+## Prerequisites
+Before starting the classifier, do the following steps:
+1. Go to `implementation/LanguageTool-4.0-stable.
+2. Run `java -cp languagetool-server.jar org.languagetool.server.HTTPServer --port 8081`.
 
 ## Launch
 1. Compare two strings:
