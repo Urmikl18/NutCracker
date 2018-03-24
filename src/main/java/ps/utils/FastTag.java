@@ -106,7 +106,7 @@ public class FastTag {
         try {
             InputStream ins = FastTag.class.getClassLoader().getResourceAsStream("lexicon.txt");
             if (ins == null) {
-                ins = new FileInputStream("src/main/resources/dictionary/pos.txt");
+                ins = new FileInputStream("../src/main/resources/dictionary/pos.txt");
             }
             Scanner scanner = new Scanner(ins);
             scanner.useDelimiter(System.getProperty("line.separator"));

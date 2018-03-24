@@ -37,7 +37,7 @@ import edu.cmu.lti.ws4j.util.WS4JConfiguration;
  */
 public class LP {
     // Path to dictionary
-    private static final String dict = "src/main/resources/dictionary/dict60.txt";
+    private static final String dict = "../src/main/resources/dictionary/dict60.txt";
     // private static final String dict = "src/main/resources/dictionary/dict70.txt";
     // Dictionary, imported from resources/dictionary/dict[size].txt
     private static final TreeSet<String> dictionary = new TreeSet<>();
