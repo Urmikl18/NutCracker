@@ -19,24 +19,23 @@ public class ChangeTag {
      * of academic papers.
      * <p>
      * <ul>
-     * <li>FORMATTING: simple cases of formatting (e.g. extra spacing, line breaks)</li>
      * <li>CITATION: changes in citations.</li>
+     * <li>FORMATTING: simple cases of formatting (e.g. extra spacing, line breaks)</li>
      * <li>SPELLING: spelling correction.</li>
-     * <li>GRAMMAR: grammar correction.</li>
-     * <li>SYNONYM: individual words were replaced, and they are interchangeable.</li>
+     * <li>INTERCHANGEABLE: individual words were replaced, and they are interchangeable.</li>
      * <li>RELATED_TERM: replaced word has a similar meaning.</li>
      * <li>UNRELATED_TERM: individual words were replaced, but they are not related.</li>
      * <li>REPHRASING: rephrasing sentences.</li>
+     * <li>GRAMMAR: grammar correction.</li>
      * <li>MINOR_TOPIC_CHANGE: meaning of a paper before and after change are similar.</li>
      * <li>MAJOR_TOPIC_CHANGE: meaning of a paper before and after change are sufficiently different.</li>
-     * <li>REPHRASING: rephrasing sentences.</li>
      * <li>UNDEFINED: default case. Some changes can not be classified correctly (e.g. changes in numbers or equations).</li>
      * </ul>
      */
     public static enum Tag {
         FORMATTING, CITATION, SPELLING, GRAMMAR,
 
-        RELATED_TERM, UNRELATED_TERM, SYNONYM,
+        RELATED_TERM, UNRELATED_TERM, INTERCHANGEABLE,
 
         REPHRASING, MINOR_TOPIC_CHANGE, MAJOR_TOPIC_CHANGE,
 

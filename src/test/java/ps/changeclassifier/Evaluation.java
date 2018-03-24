@@ -1,45 +1,70 @@
 package ps.changeclassifier;
 
-import ps.models.ChangeTag.Tag;
+import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import ps.models.Change;
+import ps.models.ChangeTag;
+import ps.utils.CSVUtils;
+import ps.utils.EvalUtils;
+import ps.utils.Visualizer;
 
 public class Evaluation {
 
-    private static final String[] paths = { "src/main/resources/benchmark/f1_1.txt",
-            "src/main/resources/benchmark/f1_2.txt", "src/main/resources/benchmark/f2_1.txt",
-            "src/main/resources/benchmark/f2_2.txt", "src/main/resources/benchmark/f3_1.txt",
-            "src/main/resources/benchmark/f3_2.txt", "src/main/resources/benchmark/f4_1.txt",
-            "src/main/resources/benchmark/f4_2.txt", "src/main/resources/benchmark/f5_1.txt",
-            "src/main/resources/benchmark/f5_2.txt" };
+    private static final String[] paths = { "src/test/resources/benchmark/angkorwat_1.txt",
+            "src/test/resources/benchmark/angkorwat_2.txt", "src/test/resources/benchmark/antarctica_1.txt",
+            "src/test/resources/benchmark/antarctica_2.txt", "src/test/resources/benchmark/atheism_1.txt",
+            "src/test/resources/benchmark/atheism_2.txt", "src/test/resources/benchmark/brit_1.txt",
+            "src/test/resources/benchmark/brit_2.txt", "src/test/resources/benchmark/dna_1.txt",
+            "src/test/resources/benchmark/dna_2.txt" };
 
-    private static final Tag[][] predicted = { { Tag.FORMATTING, Tag.RELATED_TERM, Tag.SPELLING, Tag.MINOR_TOPIC_CHANGE,
-            Tag.RELATED_TERM, Tag.CITATION, Tag.RELATED_TERM, Tag.CITATION, Tag.CITATION, Tag.CITATION, Tag.CITATION,
-            Tag.CITATION, Tag.MINOR_TOPIC_CHANGE, Tag.MINOR_TOPIC_CHANGE, Tag.MINOR_TOPIC_CHANGE },
-            { Tag.RELATED_TERM } };
-
-    public static void runTest(int testNum) {
-        // String text1 = "";
-        // String text2 = "";
-        // try {
-        //     text1 = "~PS~\n" + EvalUtils.readFile(paths[2 * testNum]) + "\n~PS~";
-        //     text2 = "~PS~\n" + EvalUtils.readFile(paths[2 * testNum + 1]) + "\n~PS~";
-        // } catch (Exception err) {
-        //     System.out.println("Could not read files");
-        //     return;
-        // }
-        // ChangeTag[] classification = ChangeClassifier.getChangeClassification(text1, text2);
-        // Object[] tmp = Arrays.stream(classification).map(ct -> ct.getTag()).toArray();
-        // Tag[] actual = new Tag[tmp.length];
-        // for (int i = 0; i < actual.length; ++i) {
-        //     actual[i] = (Tag) tmp[i];
-        // }
-        // double accuracy = EvalUtils.getAccuracy(actual, predicted[testNum]);
-        // double fmeasure = EvalUtils.getFMeasure(actual, predicted[testNum]);
-        // double[] confusion = EvalUtils.getConfusionMatrix(actual, predicted[testNum]);
-        // System.out.println("    Accuracy: " + accuracy + "\n    F-Measure: " + fmeasure + "\n    Confusion Matrix: "
-        //         + Arrays.toString(confusion));
+    private static void runTest(int testNum) {
+        String text1 = "";
+        String text2 = "";
+        System.out.println("Test " + (testNum + 1) + ": " + paths[2 * testNum]);
+        try {
+            text1 = EvalUtils.readFile(paths[2 * testNum]);
+            text2 = EvalUtils.readFile(paths[2 * testNum + 1]);
+        } catch (Exception err) {
+            System.out.println("Could not read files for evaluation");
+            return;
+        }
+        ArrayList<Change> changes = ChangeDetector.getChanges(text1, text2);
+        ArrayList<ChangeTag> alg_class = ChangeClassifier.getClassification(changes, text1, text2);
+        Visualizer.visualize(alg_class, text1, text2);
+        try {
+            saveToFile(alg_class, testNum);
+        } catch (Exception e) {
+            System.out.println("Could not save evaluation results to files");
+        }
     }
 
-    public static void runTests(int testSize) {
+    private static void saveToFile(ArrayList<ChangeTag> alg, int testNum) throws Exception {
+        String csvFile = "src/test/resources/results/total" + testNum + ".csv";
+        FileWriter writer = new FileWriter(csvFile);
+
+        //for header
+        System.out.println("Started export to file");
+        CSVUtils.writeLine(writer, Arrays.asList("Algorithm", "Actual"));
+
+        for (int i = 0; i < alg.size(); ++i) {
+
+            List<String> list = new ArrayList<>();
+            list.add(alg.get(i).getTag().toString());
+            list.add("");
+
+            CSVUtils.writeLine(writer, list);
+        }
+
+        writer.flush();
+        writer.close();
+        System.out.println("Ended export to file");
+
+    }
+
+    private static void runTests(int testSize) {
         int evalSize = Math.min(testSize, paths.length / 2);
         for (int i = 0; i < evalSize; ++i) {
             System.out.println("  Started evaluation #" + (i + 1) + " of " + testSize);
@@ -49,7 +74,7 @@ public class Evaluation {
     }
 
     public static void main(String[] args) {
-        int testSize = 2;
+        int testSize = 5;
         System.out.println("Start evaluation");
         runTests(testSize);
         System.out.println("Evaluation complete");

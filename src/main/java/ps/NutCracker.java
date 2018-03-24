@@ -83,6 +83,7 @@ public class NutCracker {
         }
 
         ArrayList<ChangeTag> classification = getChangeClassification(text1, text2);
+        // classification.stream().forEach(System.out::println);
         Visualizer.visualize(classification, text1, text2);
     }
 }

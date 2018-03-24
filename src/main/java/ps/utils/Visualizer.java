@@ -50,7 +50,7 @@ public class Visualizer {
         String body = html;
         htmlString = htmlString.replace("$title", title);
         htmlString = htmlString.replace("$body", body);
-        File newHtmlFile = new File(title + ".html");
+        File newHtmlFile = new File("src/main/resources/visualization/" + title + ".html");
         Files.write(htmlString, newHtmlFile, Charset.defaultCharset());
         return newHtmlFile.getAbsolutePath();
     }
@@ -58,7 +58,6 @@ public class Visualizer {
     private static String toHTML(ArrayList<ChangeTag> classification, String original, String mod) {
         LinkedList<Diff> diffs = dmp.diff_main(original, mod);
         dmp.diff_cleanupSemantic(diffs);
-
         StringBuilder html = new StringBuilder();
         StringBuilder types = new StringBuilder();
         types.append("<ol>");
@@ -72,16 +71,25 @@ public class Visualizer {
             case INSERT:
                 html.append("<ins style=\"background:#e6ffe6;\">").append(text).append("</ins>");
                 html.append("<sup><a href=\"#" + (index + 1) + "\">" + (index + 1) + "</a></sup>");
-                types.append(
-                        "<li id=\"" + (index + 1) + "\">" + classification.get(index).getTag().toString() + "</li>");
+                try {
+                    types.append("<li id=\"" + (index + 1) + "\">" + classification.get(index).getTag().toString()
+                            + "</li>");
+                } catch (Exception e) {
+                    types.append("<li id=\"" + (index + 1) + "\">" + e.getMessage() + "</li>");
+                }
+
                 ++index;
                 break;
             case DELETE:
                 html.append("<del style=\"background:#ffe6e6;\">").append(text).append("</del>");
                 if (i != diffs.size() - 1 && !diffs.get(i + 1).operation.equals(Operation.INSERT)) {
                     html.append("<sup><a href=\"#" + (index + 1) + "\">" + (index + 1) + "</a></sup>");
-                    types.append("<li id=\"" + (index + 1) + "\">" + classification.get(index).getTag().toString()
-                            + "</li>");
+                    try {
+                        types.append("<li id=\"" + (index + 1) + "\">" + classification.get(index).getTag().toString()
+                                + "</li>");
+                    } catch (Exception e) {
+                        types.append("<li id=\"" + (index + 1) + "\">" + e.getMessage() + "</li>");
+                    }
                     ++index;
                 }
                 break;
