@@ -1,10 +1,12 @@
 package ps.changeclassifier;
 
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import ps.models.Change;
 import ps.models.ChangeTag;
 import ps.models.ChangeTag.Tag;
+import ps.utils.LP;
 
 /**
  * Class that classifies changes in a plain-text document.
@@ -14,6 +16,7 @@ public class ChangeClassifier {
     private ChangeClassifier() {
     }
 
+    // public methods
     /**
      * @param changes list of changes to be analyzed.
      * @param text1 initial version of the document.
@@ -29,40 +32,37 @@ public class ChangeClassifier {
         }
         return ch_class;
     }
+    // public methods
 
-    /*
-    Assigns each change a tag that describes change's meaning.
-    */
+    // private methods
+    // Assigns each change a tag that describes change's meaning.
     private static ChangeTag classifyChange(Change change, String text1, String text2) {
-        Change changed_citation = ChangeDetector.extendChange(change, text1, text2, 0, false);
-        // boolean citation = ChangeAnalyzer.isCitation(changed_citation);
-        // if (citation) {
-        //     return new ChangeTag(changed_citation, Tag.CITATION);
-        // }
+        Change changed_citation = ChangeDetector.extendChange(change, text1, text2, 0);
+        boolean citation = ChangeAnalyzer.isCitation(changed_citation);
+        if (citation) {
+            return new ChangeTag(changed_citation, Tag.CITATION);
+        }
 
-        // boolean formatting = ChangeAnalyzer.isFormatting(changed_citation, text1, text2);
-        // if (formatting) {
-        //     return new ChangeTag(changed_citation, Tag.FORMATTING);
-        // }
+        boolean formatting = ChangeAnalyzer.isFormatting(changed_citation, text1, text2);
+        if (formatting) {
+            return new ChangeTag(changed_citation, Tag.FORMATTING);
+        }
 
-        Change changed_word = ChangeDetector.extendChange(changed_citation, text1, text2, 1, false);
-        // int spelling = ChangeAnalyzer.isSpelling(changed_word);
-        // switch (spelling) {
-        // case -1:
-        //     return new ChangeTag(changed_word, Tag.UNDEFINED);
-        // case 0:
-        //     break;
-        // case 1:
-        //     return new ChangeTag(changed_word, Tag.SPELLING);
-        // }
+        Change changed_word = ChangeDetector.extendChange(changed_citation, text1, text2, 1);
+        int spelling = ChangeAnalyzer.isSpelling(changed_word);
+        switch (spelling) {
+        case -1:
+            return new ChangeTag(changed_word, Tag.UNDEFINED);
+        case 0:
+            break;
+        case 1:
+            return new ChangeTag(changed_word, Tag.SPELLING);
+        }
 
         int sub_sim = ChangeAnalyzer.substitutionSimilarity(changed_word);
         switch (sub_sim) {
-        // check something else
-        case -2:
-            break;
         case -1:
-            return new ChangeTag(changed_word, Tag.UNDEFINED);
+            break;
         case 0:
             return new ChangeTag(changed_word, Tag.UNRELATED_TERM);
         case 1:
@@ -71,33 +71,45 @@ public class ChangeClassifier {
             return new ChangeTag(changed_word, Tag.INTERCHANGEABLE);
         }
 
-        Change changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2, false);
+        Change changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2);
 
-        // int grammar = ChangeAnalyzer.isGrammar(changed_sent);
-        // switch (grammar) {
-        // case -1:
-        //     break;
-        // case 0:
-        //     return new ChangeTag(change, Tag.UNDEFINED);
-        // case 1:
-        //     return new ChangeTag(changed_sent, Tag.GRAMMAR);
-        // }
+        ArrayList<String> w1 = LP.tokenizeStop(changed_word.getBefore(), false);
+        ArrayList<String> w2 = LP.tokenizeStop(changed_word.getAfter(), false);
+        w1 = w1.stream().filter(w -> !LP.isNumber(w)).collect(Collectors.toCollection(ArrayList::new));
+        w2 = w2.stream().filter(w -> !LP.isNumber(w)).collect(Collectors.toCollection(ArrayList::new));
+        if (w1.size() > 1 || w2.size() > 1) {
+            boolean rephrasing = ChangeAnalyzer.isRephrasing(changed_sent);
+            if (rephrasing) {
+                return new ChangeTag(changed_sent, Tag.REPHRASING);
+            }
+        }
 
-        // boolean rephrasing = ChangeAnalyzer.isRephrasing(changed_sent);
-        // if (rephrasing) {
-        //     return new ChangeTag(changed_sent, Tag.REPHRASING);
-        // }
-        changed_sent = ChangeDetector.extendChange(changed_word, text1, text2, 2, true);
-        // int topic_sim = ChangeAnalyzer.relatedTopics(change, text1);
-        // switch (topic_sim) {
-        // case -1:
-        //     break;
-        // case 0:
-        //     return new ChangeTag(change, Tag.MINOR_TOPIC_CHANGE);
-        // case 1:
-        //     return new ChangeTag(change, Tag.MAJOR_TOPIC_CHANGE);
-        // }
+        int grammar = ChangeAnalyzer.isGrammar(changed_sent);
+        switch (grammar) {
+        case -1:
+            break;
+        case 0:
+            return new ChangeTag(changed_sent, Tag.UNDEFINED);
+        case 1:
+            return new ChangeTag(changed_sent, Tag.GRAMMAR);
+        }
+
+        w1 = LP.tokenizeStop(changed_word.getBefore(), false);
+        w2 = LP.tokenizeStop(changed_word.getAfter(), false);
+        w1 = w1.stream().filter(w -> !LP.isNumber(w)).collect(Collectors.toCollection(ArrayList::new));
+        w2 = w2.stream().filter(w -> !LP.isNumber(w)).collect(Collectors.toCollection(ArrayList::new));
+        if (w1.size() > 2 || w2.size() > 2) {
+            int topic_sim = ChangeAnalyzer.relatedTopics(changed_sent, text1);
+            switch (topic_sim) {
+            case -1:
+                break;
+            case 0:
+                return new ChangeTag(changed_sent, Tag.MINOR_TOPIC_CHANGE);
+            case 1:
+                return new ChangeTag(changed_sent, Tag.MAJOR_TOPIC_CHANGE);
+            }
+        }
         return new ChangeTag(change, Tag.UNDEFINED);
     }
-
+    // private methods
 }

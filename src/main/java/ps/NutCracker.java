@@ -5,15 +5,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.TreeSet;
 
 import ps.changeclassifier.ChangeClassifier;
 import ps.changeclassifier.ChangeDetector;
 import ps.models.Change;
 import ps.models.ChangeTag;
-import ps.utils.LP;
 import ps.utils.Visualizer;
 
 /**
@@ -46,17 +43,11 @@ public class NutCracker {
      * </ol>
      */
     public static ArrayList<ChangeTag> getChangeClassification(String text1, String text2) {
-        // 0. Preprocessing
-        // Fill dictionary
-        String dict = "src/main/resources/dictionary/dict60.txt";
-        // String dict = "src/main/resources/dictionary/dict70.txt";
-        LP.fillDictionary(dict);
         // 1. Detect Changes
         ArrayList<Change> changes = ChangeDetector.getChanges(text1, text2);
         // 2. Analyze Changes
         ArrayList<ChangeTag> class_changes = ChangeClassifier.getClassification(changes, text1, text2);
-        // 3. Cleanup Classification
-        // 4. Return Classification
+        // 3. Return Classification
         return class_changes;
     }
 
@@ -92,6 +83,7 @@ public class NutCracker {
         }
 
         ArrayList<ChangeTag> classification = getChangeClassification(text1, text2);
+        // classification.stream().forEach(System.out::println);
         Visualizer.visualize(classification, text1, text2);
     }
 }

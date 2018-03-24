@@ -50,14 +50,14 @@ public class Visualizer {
         String body = html;
         htmlString = htmlString.replace("$title", title);
         htmlString = htmlString.replace("$body", body);
-        File newHtmlFile = new File("../evaluation2/" + title + ".html");
+        File newHtmlFile = new File("src/main/resources/visualization/" + title + ".html");
         Files.write(htmlString, newHtmlFile, Charset.defaultCharset());
         return newHtmlFile.getAbsolutePath();
     }
 
     private static String toHTML(ArrayList<ChangeTag> classification, String original, String mod) {
         LinkedList<Diff> diffs = dmp.diff_main(original, mod);
-
+        dmp.diff_cleanupSemantic(diffs);
         StringBuilder html = new StringBuilder();
         StringBuilder types = new StringBuilder();
         types.append("<ol>");

@@ -14,12 +14,11 @@ import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -28,16 +27,24 @@ import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
-import edu.cmu.lti.jawjaw.JAWJAW;
-import edu.cmu.lti.jawjaw.pobj.POS;
+import edu.cmu.lti.lexical_db.ILexicalDatabase;
+import edu.cmu.lti.lexical_db.NictWordNet;
+import edu.cmu.lti.ws4j.impl.JiangConrath;
+import edu.cmu.lti.ws4j.util.WS4JConfiguration;
 
 /**
  * Language processing module.
  */
 public class LP {
-
+    // Path to dictionary
+    private static final String dict = "src/main/resources/dictionary/dict60.txt";
+    // private static final String dict = "src/main/resources/dictionary/dict70.txt";
+    // Dictionary, imported from resources/dictionary/dict[size].txt
     private static final TreeSet<String> dictionary = new TreeSet<>();
+    // WordNet database
+    private static ILexicalDatabase db = new NictWordNet();
 
+    // public methods
     /**
      * @param str string to be tested.
      * @return true, if string is a number, false, otherwise.
@@ -51,6 +58,10 @@ public class LP {
         return true;
     }
 
+    /**
+     * @param str string to be tested.
+     * @return true, if string is a symbol.
+     */
     public static boolean isSymbol(String str) {
         Pattern p = Pattern.compile(RegEx.SYMBOL);
         Matcher m = p.matcher(str);
@@ -69,7 +80,7 @@ public class LP {
 
     /**
      * @param str string to be tested.
-     * @return true, if string is a in-text citation, false, otherwise.
+     * @return true, if string is an in-text citation, false, otherwise.
      */
     public static boolean isQuote(String str) {
         Pattern p1 = Pattern.compile(RegEx.QUOTE1);
@@ -85,41 +96,17 @@ public class LP {
      * @return true, if a word is in a dictionary, false, otherwise.
      */
     public static boolean inDictionary(String word) {
+        if (dictionary.isEmpty()) {
+            fillDictionary();
+        }
         return dictionary.contains(word);
     }
 
-    public static void fillDictionary(String dict) {
-        try (Stream<String> stream = Files.lines(Paths.get(dict))) {
-            stream.forEach(w -> dictionary.add(w.toLowerCase()));
-        } catch (IOException e) {
-            System.out.println("Can't fill the dictionary");
-        }
-    }
-
-    private static boolean isVowel(char c) {
-        return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u';
-    }
-
-    private static boolean addE(String tmp) {
-        if (tmp.length() > 3) {
-            if ((tmp.charAt(tmp.length() - 1) == 't' || tmp.charAt(tmp.length() - 1) == 's'
-                    || tmp.charAt(tmp.length() - 1) == 'z') && isVowel(tmp.charAt(tmp.length() - 2))) {
-                return true;
-            } else if (tmp.charAt(tmp.length() - 1) == 'r'
-                    && (tmp.charAt(tmp.length() - 2) == 'u' && tmp.charAt(tmp.length() - 3) != 'o')
-                    || tmp.charAt(tmp.length() - 2) == 'i') {
-                return true;
-            } else if (tmp.charAt(tmp.length() - 1) == 's' && tmp.charAt(tmp.length() - 2) == 'a') {
-                return true;
-            } else if (tmp.charAt(tmp.length() - 1) == 'c' && tmp.charAt(tmp.length() - 2) == 'u') {
-                return true;
-            } else if (tmp.endsWith("rg")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
+    /**
+     * @param word Word to be stemmed.
+     * @param pos POS-tag to be considered while stemming and to be modified.
+     * @return A pair [stem, pos]
+     */
     public static ArrayList<String> stem(String word, String pos) {
         ArrayList<String> result = new ArrayList<>(2);
         result.add(word);
@@ -154,18 +141,19 @@ public class LP {
                 }
             } else if (pos.equals("VBG")) {
                 if (word.endsWith("ing")) {
+                    tmp = word.substring(0, word.length() - 3);
                     if (tmp.length() > 2) {
-                        tmp = word.substring(0, word.length() - 3);
                         if (tmp.charAt(tmp.length() - 2) == tmp.charAt(tmp.length() - 3)) {
                             tmp = tmp.substring(0, tmp.length() - 1);
                         }
                     }
-
                 }
             }
             result.set(0, tmp);
             result.set(1, "v");
-        } else if (pos.startsWith("JJ")) {
+        } else if (pos.startsWith("JJ"))
+
+        {
             result.set(0, word);
             result.set(1, "a");
         } else if (pos.startsWith("RB")) {
@@ -179,57 +167,6 @@ public class LP {
             result.set(1, null);
         }
         return result;
-    }
-
-    /**
-     * @param text initial text.
-     * @param refPos1 left-most position.
-     * @param refPos2 right-most position.
-     * @return positions of the closest word that contains refPos1 and refPos2
-     */
-    public static int[] nearestWord(String text, int refPos1, int refPos2) {
-        int tmp, start, end;
-        BreakIterator bi = BreakIterator.getWordInstance(Locale.ENGLISH);
-        bi.setText(text);
-        tmp = bi.preceding(refPos1);
-        start = tmp == BreakIterator.DONE ? 0 : tmp;
-        tmp = bi.following(refPos2);
-        end = tmp == BreakIterator.DONE ? text.length() : tmp;
-        return new int[] { start, end };
-    }
-
-    /**
-     * @param text initial text.
-     * @param refPos1 left-most position.
-     * @param refPos2 right-most position.
-     * @return positions of the closest sentence that contains refPos1 and refPos2
-     */
-    public static int[] nearestSentence(String text, int refPos1, int refPos2) {
-        Pattern p = Pattern.compile(RegEx.SENTENCE);
-        Matcher m = p.matcher(text);
-        while (m.find()) {
-            if (m.start() <= refPos1 && refPos2 <= m.end()) {
-                return new int[] { m.start(), m.end() };
-            }
-        }
-        return new int[] { refPos1, refPos2 };
-    }
-
-    /**
-     * @param text initial text.
-     * @param refPos1 left-most position.
-     * @param refPos2 right-most position.
-     * @return positions of the closest sentence that contains refPos1 and refPos2
-     */
-    public static int[] nearestParagraph(String text, int refPos1, int refPos2) {
-        Pattern p = Pattern.compile(RegEx.PARAGRAPH);
-        Matcher m = p.matcher(text);
-        while (m.find()) {
-            if (m.start() <= refPos1 && refPos2 <= m.end()) {
-                return new int[] { m.start(), m.end() };
-            }
-        }
-        return new int[] { refPos1, refPos2 };
     }
 
     /**
@@ -271,16 +208,81 @@ public class LP {
         return null;
     }
 
+    /**
+     * @param text initial text.
+     * @param refPos1 left-most position.
+     * @param refPos2 right-most position.
+     * @return positions of the closest word that contains refPos1 and refPos2
+     */
+    public static int[] nearestWord(String text, int refPos1, int refPos2) {
+        int tmp, start, end;
+        BreakIterator bi = BreakIterator.getWordInstance(Locale.ENGLISH);
+        bi.setText(text);
+        tmp = bi.preceding(refPos1);
+        start = tmp == BreakIterator.DONE ? 0 : tmp;
+        tmp = bi.following(refPos2);
+        end = tmp == BreakIterator.DONE ? text.length() : tmp;
+        return new int[] { start, end };
+    }
+
+    /**
+     * @param text initial text.
+     * @param refPos1 left-most position.
+     * @param refPos2 right-most position.
+     * @return positions of the closest sentence that contains refPos1 and refPos2
+     */
+    public static int[] nearestSentence(String text, int refPos1, int refPos2) {
+        int i = refPos1;
+        while (i > 0 && text.charAt(i) != '.' && text.charAt(i) != '?' && text.charAt(i) != '!'
+                && text.charAt(i) != '\n') {
+            --i;
+        }
+        int j = refPos2;
+        while (j != text.length() && text.charAt(j) != '.' && text.charAt(j) != '?' && text.charAt(j) != '!'
+                && text.charAt(j) != '\n') {
+            ++j;
+        }
+        return new int[] { i, j };
+    }
+
+    /**
+     * @param text initial text.
+     * @param refPos1 left-most position.
+     * @param refPos2 right-most position.
+     * @return positions of the closest paragraph that contains refPos1 and refPos2
+     */
+    public static int[] nearestParagraph(String text, int refPos1, int refPos2) {
+        int i = refPos1 >= text.length() ? text.length() - 1 : refPos1;
+        int j = refPos2 >= text.length() ? text.length() - 1 : refPos2;
+        while (i > 0 && text.charAt(i) != '\n' && text.charAt(i) != '\r') {
+            --i;
+        }
+        while (j < text.length() && text.charAt(j) != '\n' && text.charAt(j) != '\r') {
+            ++j;
+        }
+        return new int[] { i, j };
+    }
+
+    /**
+     * @param s Text fragment to be analyzed.
+     * @return Number of sentences in given fragment.
+     */
     public static int numberOfSentences(String s) {
-        Pattern p = Pattern.compile("^" + RegEx.SENTENCE + "$");
-        Matcher m = p.matcher(s);
-        int sentCount = 0;
-        while (m.find()) {
-            ++sentCount;
+        int sentCount = 1;
+        String tmp = s.replaceAll("\\.\\.\\.", ".");
+        tmp = tmp.replaceAll("\\?!", "?");
+        for (int i = 0; i < tmp.length(); ++i) {
+            if (tmp.charAt(i) == '.' || tmp.charAt(i) == '?' || tmp.charAt(i) == '!') {
+                ++sentCount;
+            }
         }
         return sentCount;
     }
 
+    /**
+     * @param s Text fragment to be analyzed.
+     * @return Number of paragraphs in given fragment.
+     */
     public static int numberOfParagraphs(String s) {
         Pattern p = Pattern.compile(RegEx.PARAGRAPH);
         Matcher m = p.matcher(s);
@@ -289,47 +291,12 @@ public class LP {
             ++paraCount;
         }
         return paraCount;
-
     }
 
     /**
-     * @param a vector representation of the first sentence.
-     * @param b vector representation of the second sentence.
-     * @param W similarity matrix between words.
-     * @return value of Fernando-Stevenson similarity measure.
+     * @param sentence Sentence to be checked.
+     * @return JSON in a form of string with a list of matched rules. For more info @see https://languagetool.org/http-api/swagger-ui/#!/default/post_check
      */
-    public static double fernandoSim(double[] a, double[] b, double[][] W) {
-        double norm = vecLength(a) * vecLength(b);
-        double[][] aM = new double[a.length][a.length];
-        aM[0] = a;
-        double[][] bM = new double[b.length][b.length];
-        for (int i = 0; i < bM.length; ++i) {
-            bM[i][0] = b[i];
-        }
-        double[][] mult = matrixMult(matrixMult(aM, W), bM);
-        return mult[0][0] / norm;
-    }
-
-    private static double vecLength(double[] vec) {
-        double sum = 0;
-        for (int i = 0; i < vec.length; ++i) {
-            sum += vec[i] * vec[i];
-        }
-        return Math.sqrt(sum);
-    }
-
-    private static double[][] matrixMult(double[][] a, double[][] b) {
-        double[][] res = new double[a.length][b[0].length];
-        for (int i = 0; i < a.length; ++i) {
-            for (int j = 0; j < b[0].length; ++j) {
-                for (int k = 0; k < a[0].length; ++k) {
-                    res[i][j] += a[i][k] * b[k][j];
-                }
-            }
-        }
-        return res;
-    }
-
     public static String checkGrammar(String sentence) {
         HttpURLConnection connection = null;
         String urlParameters = "text=" + sentence + "&language=en-US";
@@ -363,7 +330,6 @@ public class LP {
             rd.close();
             return response.toString();
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         } finally {
             if (connection != null) {
@@ -373,112 +339,86 @@ public class LP {
     }
 
     /**
-     * @param text1 initial version of the document
-     * @param text2 modified version of the document
-     * @return a list of features (covered WordNet domains) in texts
+     * @param before First text fragment.
+     * @param after Second text fragment.
+     * @return Similarity score as defined by Fernando and Stevenson:
+     * <ol>
+     * <li>Extract words from text fragments.</li>
+     * <li>Remove stop words.</li>
+     * <li>Remove numbers.</li>
+     * <li>Assign POS-tag to each word.</li>
+     * <li>Stem words and modify POS-tags to be used in WS4J</li>
+     * <li>Transform input fragments to word vectors.</li>
+     * <li>Create normalized similarity matrix using Jiang-Conrath word similarity measure</li>
+     * <li>Compute similarity score</li>
+     * </ol>
      */
-    public static ArrayList<String> getFeatures(String text1, String text2) {
-        ArrayList<String> w1 = tokenizeStop(text1, true);
-        ArrayList<String> w2 = tokenizeStop(text2, true);
-        List<String> t1 = FastTag.tag(w1);
-        List<String> t2 = FastTag.tag(w2);
-        Set<String> d = new TreeSet<>();
+    public static double semanticSimilarity(String before, String after) {
+        ArrayList<String> words1 = LP.tokenizeStop(before, true);
+        ArrayList<String> words2 = LP.tokenizeStop(after, true);
 
-        for (int i = 0; i < w1.size(); ++i) {
-            ArrayList<String> wp = LP.stem(w1.get(i), t1.get(i));
-            d.addAll(JAWJAW.findInDomains(wp.get(0), POS.valueOf(wp.get(1))));
-        }
-        for (int i = 0; i < w2.size(); ++i) {
-            ArrayList<String> wp = LP.stem(w2.get(i), t2.get(i));
-            d.addAll(JAWJAW.findInDomains(wp.get(0), POS.valueOf(wp.get(1))));
+        words1 = words1.stream().filter(w -> !isNumber(w)).collect(Collectors.toCollection(ArrayList::new));
+        words2 = words2.stream().filter(w -> !isNumber(w)).collect(Collectors.toCollection(ArrayList::new));
+
+        if ((words1.isEmpty() || words2.isEmpty()) || (words1.equals(words2))) {
+            return -1;
         }
 
-        ArrayList<String> features = new ArrayList<String>(d);
-        features.sort((d1, d2) -> d1.compareTo(d2));
-        return features;
-    }
+        // get POS-tags for all words
+        List<String> tags1 = FastTag.tag(words1);
+        List<String> tags2 = FastTag.tag(words2);
 
-    /**
-     * @param features whose distribution is to be found
-     * @param text to be analyzed
-     */
-    public static Map<String, Double> getDistribution(ArrayList<String> features, String text) {
-        Map<String, Double> dist = new TreeMap<>();
-        ArrayList<String> words = tokenizeStop(text, true);
-        List<String> tags = FastTag.tag(words);
-        Set<String> domains = new TreeSet<>();
-
-        // Initialize probability distribution
-        for (String f : features) {
-            dist.put(f, 0.0);
+        // assign each word its tag for better similarity scores
+        for (int i = 0; i < words1.size(); ++i) {
+            ArrayList<String> wp = LP.stem(words1.get(i), tags1.get(i));
+            words1.set(i, wp.get(0) + "#" + wp.get(1));
         }
 
-        int totalCount = 0;
-        for (int i = 0; i < words.size(); ++i) {
-            ArrayList<String> wp = LP.stem(words.get(i), tags.get(i));
-            try {
-                domains = JAWJAW.findInDomains(wp.get(0), POS.valueOf(wp.get(1)));
-            } catch (Exception e) {
-                domains = new TreeSet<>();
+        for (int i = 0; i < words2.size(); ++i) {
+            ArrayList<String> wp = LP.stem(words2.get(i), tags2.get(i));
+            words2.set(i, wp.get(0) + "#" + wp.get(1));
+        }
+
+        Set<String> wd1 = new TreeSet<String>(words1);
+        Set<String> wd2 = new TreeSet<String>(words2);
+        Set<String> w = new TreeSet<>(wd1);
+        w.addAll(wd2);
+
+        // create a sorted vector of words
+        ArrayList<String> words = new ArrayList<>(w);
+        words.sort((o1, o2) -> o1.compareTo(o2));
+
+        // represent first sentence as a vector
+        double[] a = words.stream().mapToDouble(word -> {
+            if (wd1.contains(word)) {
+                return 1.0;
+            } else {
+                return 0.0;
             }
-            for (String domain : domains) {
-                if (dist.containsKey(domain)) {
-                    ++totalCount;
-                    double freq = dist.get(domain);
-                    dist.put(domain, freq + 1);
-                }
+        }).toArray();
+
+        // represent second sentence as a vector
+        double[] b = words.stream().mapToDouble(word -> {
+            if (wd2.contains(word)) {
+                return 1.0;
+            } else {
+                return 0.0;
             }
-        }
+        }).toArray();
 
-        if (totalCount != 0) {
-            for (String key : dist.keySet()) {
-                double newFreq = dist.get(key) / totalCount;
-                dist.put(key, newFreq);
-            }
-        }
-        return dist;
-    }
+        // calculte similarity matrix
+        WS4JConfiguration.getInstance().setMFS(false);
+        double[][] W = new JiangConrath(db).getNormalizedSimilarityMatrix(w.toArray(new String[w.size()]),
+                w.toArray(new String[w.size()]));
 
-    /**
-     * @param dist1 first distribution
-     * @param dist2 second distribution
-     * @return Jensen-Shannon divergence for these distributions
-     */
-    public static double jsd(Map<String, Double> dist1, Map<String, Double> dist2) {
-        Map<String, Double> mid = midDist(dist1, dist2);
-        ArrayList<Double> p = new ArrayList<>(dist1.values());
-        ArrayList<Double> q = new ArrayList<>(dist2.values());
-        ArrayList<Double> m = new ArrayList<>(mid.values());
-        return (dkl(p, m) + dkl(q, m)) / 2;
-    }
-
-    /*
-    Calculates Kullback-Leibler divergence of two probability distributions.
-    */
-    private static double dkl(ArrayList<Double> p, ArrayList<Double> q) {
-        double score = 0.0;
-        for (int i = 0; i < p.size(); ++i) {
-            double cont = q.get(i) == 0 || p.get(i) == 0 ? 0 : p.get(i) * Math.log(p.get(i) / q.get(i));
-            score += cont;
-        }
-        return score;
-    }
-
-    /*
-    Calculates the point-wise average of two distributions.
-    */
-    public static Map<String, Double> midDist(Map<String, Double> dist1, Map<String, Double> dist2) {
-        Map<String, Double> mid = new TreeMap<>();
-        for (String key : dist1.keySet()) {
-            double freq = (dist1.get(key) + dist2.get(key)) / 2;
-            mid.put(key, freq);
-        }
-        return mid;
+        // calculate similarity score
+        double sim = LP.fernandoSim(a, b, W);
+        return sim;
     }
 
     /**
      * @param text to be parsed
-     * @return A list of stemmed words without stop-words
+     * @return A list of words without stop-words.
      */
     public static ArrayList<String> tokenizeStop(String text, boolean stop) {
         ArrayList<String> words = new ArrayList<>();
@@ -505,5 +445,77 @@ public class LP {
 
         return words;
     }
+    // public methods
 
+    // private methods
+    private static void fillDictionary() {
+        try (Stream<String> stream = Files.lines(Paths.get(dict))) {
+            stream.forEach(w -> dictionary.add(w.toLowerCase()));
+        } catch (IOException e) {
+            System.out.println("Can't fill the dictionary");
+        }
+    }
+
+    private static boolean isVowel(char c) {
+        return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u';
+    }
+
+    private static boolean addE(String tmp) {
+        if (tmp.endsWith("g")) {
+            return true;
+        }
+        if (tmp.length() > 3) {
+            if ((tmp.charAt(tmp.length() - 1) == 't' || tmp.charAt(tmp.length() - 1) == 's'
+                    || tmp.charAt(tmp.length() - 1) == 'z' || tmp.charAt(tmp.length() - 1) == 'v')
+                    && isVowel(tmp.charAt(tmp.length() - 2))) {
+                return true;
+            } else if (tmp.charAt(tmp.length() - 1) == 'r'
+                    && (tmp.charAt(tmp.length() - 2) == 'u' && tmp.charAt(tmp.length() - 3) != 'o')
+                    || tmp.charAt(tmp.length() - 2) == 'i') {
+                return true;
+            } else if (tmp.charAt(tmp.length() - 1) == 's' && tmp.charAt(tmp.length() - 2) == 'a') {
+                return true;
+            } else if (tmp.charAt(tmp.length() - 1) == 'c' && tmp.charAt(tmp.length() - 2) == 'u') {
+                return true;
+            } else if (tmp.endsWith("rg")) {
+                return true;
+            } else if (tmp.endsWith("in") && !tmp.endsWith("oin")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static double fernandoSim(double[] a, double[] b, double[][] W) {
+        double norm = vecLength(a) * vecLength(b);
+        double[][] aM = new double[a.length][a.length];
+        aM[0] = a;
+        double[][] bM = new double[b.length][b.length];
+        for (int i = 0; i < bM.length; ++i) {
+            bM[i][0] = b[i];
+        }
+        double[][] mult = matrixMult(matrixMult(aM, W), bM);
+        return mult[0][0] / norm;
+    }
+
+    private static double vecLength(double[] vec) {
+        double sum = 0;
+        for (int i = 0; i < vec.length; ++i) {
+            sum += vec[i] * vec[i];
+        }
+        return Math.sqrt(sum);
+    }
+
+    private static double[][] matrixMult(double[][] a, double[][] b) {
+        double[][] res = new double[a.length][b[0].length];
+        for (int i = 0; i < a.length; ++i) {
+            for (int j = 0; j < b[0].length; ++j) {
+                for (int k = 0; k < a[0].length; ++k) {
+                    res[i][j] += a[i][k] * b[k][j];
+                }
+            }
+        }
+        return res;
+    }
+    // private methods
 }

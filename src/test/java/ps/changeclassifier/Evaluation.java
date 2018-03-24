@@ -13,18 +13,17 @@ import ps.utils.Visualizer;
 
 public class Evaluation {
 
-    private static final String[] paths = { "../benchmark/angkorwat_1.txt", "../benchmark/angkorwat_2.txt",
-            "../benchmark/antarctica_1.txt", "../benchmark/antarctica_2.txt", "../benchmark/atheism_1.txt",
-            "../benchmark/atheism_2.txt", "../benchmark/brit_1.txt", "../benchmark/brit_2.txt",
-            "../benchmark/dna_1.txt", "../benchmark/dna_2.txt", "../benchmark/han_1.txt", "../benchmark/han_2.txt",
-            "../benchmark/influenza_1.txt", "../benchmark/influenza_2.txt", "../benchmark/japan_1.txt",
-            "../benchmark/japan_2.txt", "../benchmark/mdd_1.txt", "../benchmark/mdd_2.txt",
-            "../benchmark/supernova_1.txt", "../benchmark/supernova_2.txt" };
+    private static final String[] paths = { "src/test/resources/benchmark/angkorwat_1.txt",
+            "src/test/resources/benchmark/angkorwat_2.txt", "src/test/resources/benchmark/antarctica_1.txt",
+            "src/test/resources/benchmark/antarctica_2.txt", "src/test/resources/benchmark/atheism_1.txt",
+            "src/test/resources/benchmark/atheism_2.txt", "src/test/resources/benchmark/brit_1.txt",
+            "src/test/resources/benchmark/brit_2.txt", "src/test/resources/benchmark/dna_1.txt",
+            "src/test/resources/benchmark/dna_2.txt" };
 
     private static void runTest(int testNum) {
         String text1 = "";
         String text2 = "";
-        System.out.println("Test " + testNum + ": " + paths[2 * testNum]);
+        System.out.println("Test " + (testNum + 1) + ": " + paths[2 * testNum]);
         try {
             text1 = EvalUtils.readFile(paths[2 * testNum]);
             text2 = EvalUtils.readFile(paths[2 * testNum + 1]);
@@ -43,7 +42,7 @@ public class Evaluation {
     }
 
     private static void saveToFile(ArrayList<ChangeTag> alg, int testNum) throws Exception {
-        String csvFile = "../evaluation2/spelling" + testNum + ".csv";
+        String csvFile = "src/test/resources/results/total" + testNum + ".csv";
         FileWriter writer = new FileWriter(csvFile);
 
         //for header
@@ -75,7 +74,7 @@ public class Evaluation {
     }
 
     public static void main(String[] args) {
-        int testSize = 10;
+        int testSize = 5;
         System.out.println("Start evaluation");
         runTests(testSize);
         System.out.println("Evaluation complete");

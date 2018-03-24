@@ -2,10 +2,7 @@ package ps.changeclassifier;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -15,7 +12,6 @@ import edu.cmu.lti.jawjaw.pobj.POS;
 import edu.cmu.lti.lexical_db.ILexicalDatabase;
 import edu.cmu.lti.lexical_db.NictWordNet;
 import edu.cmu.lti.ws4j.impl.HirstStOnge;
-import edu.cmu.lti.ws4j.impl.JiangConrath;
 import edu.cmu.lti.ws4j.util.WS4JConfiguration;
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Diff;
@@ -25,7 +21,6 @@ import ps.utils.LP;
 
 /**
  * Class that provides tools for determining change's meaning.
- * Uses google-diff-match-patch library (@see https://github.com/GerHobbelt/google-diff-match-patch for more information)
  */
 public class ChangeAnalyzer {
 
@@ -37,16 +32,19 @@ public class ChangeAnalyzer {
     private ChangeAnalyzer() {
     }
 
+    // protected methods
     /*
     Checks if a change happened in a citation.
     Simple matching.
     */
     protected static boolean isCitation(Change change) {
-        if (LP.isQuote(change.getBefore()) && LP.isQuote(change.getAfter())) {
-            // Double checking, but should never happen
-            if (!change.getBefore().equals(change.getAfter())) {
-                return true;
-            }
+        String cite1 = change.getBefore().trim();
+        String cite2 = change.getAfter().trim();
+        if (cite1.isEmpty() && cite2.isEmpty()) {
+            return false;
+        }
+        if (LP.isQuote(cite1) && LP.isQuote(cite2)) {
+            return true;
         }
         return false;
     }
@@ -60,6 +58,9 @@ public class ChangeAnalyzer {
             return true;
         }
         if (LP.isFormattingSymbol(change.getAfter()) && change.getBefore().equals("")) {
+            if (change.getPos1() == 0 || change.getPos1() + change.getBefore().length() == text1.length()) {
+                return true;
+            }
             char c1 = text1.charAt(change.getPos1() - 1);
             char c2 = text1.charAt(change.getPos1() + change.getBefore().length());
             if (!Character.isLetter(c1) || !Character.isLetter(c2)) {
@@ -67,6 +68,9 @@ public class ChangeAnalyzer {
             }
         }
         if (LP.isFormattingSymbol(change.getBefore()) && change.getAfter().equals("")) {
+            if (change.getPos2() == 0 || change.getPos2() + change.getAfter().length() == text2.length()) {
+                return true;
+            }
             char c1 = text2.charAt(change.getPos2() - 1);
             char c2 = text2.charAt(change.getPos2() + change.getAfter().length());
             if (!Character.isLetter(c1) || !Character.isLetter(c2)) {
@@ -78,10 +82,9 @@ public class ChangeAnalyzer {
 
     /*
     1. Check if both changes are words.
-    2. If both are not in dictionary return UNDEFINED.
-    3. If the first one is not in dictionary and has a distance of <= 2, then SPELLING.
+    2. If both are not in dictionary return -1.
+    3. If the first one is not in dictionary and has a distance of <= 2, but not 0, then SPELLING.
     4. If both words are correct, and are equal ignoring case, then it is spelling (e.g. north -> North).
-    5. Otherwise, keep going.
     */
     protected static int isSpelling(Change change) {
         ArrayList<String> w1 = LP.tokenizeStop(change.getBefore(), false);
@@ -99,12 +102,16 @@ public class ChangeAnalyzer {
             }
             if (misspelling && correct) {
                 LinkedList<Diff> diff = dmp.diff_main(before, after);
-                if (dmp.diff_levenshtein(diff) <= 2) {
+                int dist = dmp.diff_levenshtein(diff);
+                if (dist <= 2 && dist != 0) {
                     return 1;
                 }
             }
             if (!misspelling && correct) {
-                if (before.equalsIgnoreCase(after)) {
+                if (before.equals(after)) {
+                    return -1;
+                }
+                if (before.equalsIgnoreCase(after) && LP.inDictionary(before) && LP.inDictionary(after)) {
                     return 1;
                 }
             }
@@ -135,9 +142,12 @@ public class ChangeAnalyzer {
         if (w1.size() == 1 && w2.size() == 1) {
             before = w1.get(0);
             after = w2.get(0);
+            if (before.equals(after)) {
+                return -1;
+            }
             // both words should be in dictionary
             if (!LP.inDictionary(before) || !LP.inDictionary(after)) {
-                return -2;
+                return -1;
             }
             // assing POS-tag using FastTag
             tag1 = FastTag.tag(w1).get(0);
@@ -157,6 +167,14 @@ public class ChangeAnalyzer {
             // modify POS-tags to match the ones of WS4J and stem words if needed
             ArrayList<String> tmp1 = LP.stem(before, tag1);
             ArrayList<String> tmp2 = LP.stem(after, tag2);
+
+            if (tmp1.get(1) == null || tmp2.get(1) == null) {
+                return -1;
+            }
+
+            if (tmp1.get(0).equals(tmp2.get(0))) {
+                return -1;
+            }
 
             before = tmp1.get(0);
             pos1 = POS.valueOf(tmp1.get(1));
@@ -188,7 +206,7 @@ public class ChangeAnalyzer {
             }
         }
 
-        return -2;
+        return -1;
     }
 
     /*
@@ -203,15 +221,17 @@ public class ChangeAnalyzer {
     protected static boolean isRephrasing(Change changed_sent) {
         ArrayList<Change> localChanges = ChangeDetector.getChanges(changed_sent.getBefore(), changed_sent.getAfter());
         // things that can't be rephrasing
-        boolean cond1, cond2, cond3, cond4, cond5;
+        boolean cond1, cond2, cond3, cond4, cond5, cond6;
         boolean other = true;
         for (Change c : localChanges) {
             cond1 = isCitation(c);
             cond2 = isFormatting(c, changed_sent.getBefore(), changed_sent.getAfter());
-            cond3 = isSpelling(c) != 0;
             cond4 = LP.isNumber(c.getBefore()) || LP.isSymbol(c.getBefore());
             cond5 = LP.isNumber(c.getAfter()) || LP.isSymbol(c.getAfter());
-            other = cond1 || cond2 || cond3 || (cond4 && cond5);
+            Change cw = ChangeDetector.extendChange(c, changed_sent.getBefore(), changed_sent.getAfter(), 1);
+            cond3 = isSpelling(cw) == 1;
+            cond6 = substitutionSimilarity(cw) != -1;
+            other = cond1 || cond2 || cond3 || (cond4 && cond5) || cond6;
         }
         if (other) {
             return false;
@@ -224,63 +244,7 @@ public class ChangeAnalyzer {
             return false;
         }
 
-        ArrayList<String> words1 = LP.tokenizeStop(changed_sent.getBefore(), true);
-        ArrayList<String> words2 = LP.tokenizeStop(changed_sent.getAfter(), true);
-
-        if (words1.isEmpty() || words2.isEmpty()) {
-            return false;
-        }
-
-        // get POS-tags for all words
-        List<String> tags1 = FastTag.tag(words1);
-        List<String> tags2 = FastTag.tag(words2);
-
-        // assign each word its tag for better similarity scores
-        for (int i = 0; i < words1.size(); ++i) {
-            ArrayList<String> wp = LP.stem(words1.get(i), tags1.get(i));
-            words1.set(i, wp.get(0) + "#" + wp.get(1));
-        }
-
-        for (int i = 0; i < words2.size(); ++i) {
-            ArrayList<String> wp = LP.stem(words2.get(i), tags2.get(i));
-            words2.set(i, wp.get(0) + "#" + wp.get(1));
-        }
-
-        Set<String> wd1 = new TreeSet<String>(words1);
-        Set<String> wd2 = new TreeSet<String>(words2);
-        Set<String> w = new TreeSet<>(wd1);
-        w.addAll(wd2);
-
-        // create a sorted vector of words
-        ArrayList<String> words = new ArrayList<>(w);
-        words.sort((o1, o2) -> o1.compareTo(o2));
-
-        // represent first sentence as a vector
-        double[] a = words.stream().mapToDouble(word -> {
-            if (wd1.contains(word)) {
-                return 1.0;
-            } else {
-                return 0.0;
-            }
-        }).toArray();
-
-        // represent second sentence as a vector
-        double[] b = words.stream().mapToDouble(word -> {
-            if (wd2.contains(word)) {
-                return 1.0;
-            } else {
-                return 0.0;
-            }
-        }).toArray();
-
-        // calculte similarity matrix
-        WS4JConfiguration.getInstance().setMFS(false);
-        double[][] W = new JiangConrath(db).getNormalizedSimilarityMatrix(w.toArray(new String[w.size()]),
-                w.toArray(new String[w.size()]));
-
-        // calculate similarity score
-        double sim = LP.fernandoSim(a, b, W);
-        // think about threshold
+        double sim = LP.semanticSimilarity(changed_sent.getBefore(), changed_sent.getAfter());
         return sim >= 0.3;
     }
 
@@ -289,9 +253,10 @@ public class ChangeAnalyzer {
     1. Check is sentence contains any changes that have not been previously analyzed.
     2. Grammar is a property of a sentence.
     3. Check grammar in both sentences.
-    4. If both are correct, it may be rephrasing or topic changes.
-    5. If both are incorrect or correct sentence was turned into incorrect, no decision can be made.
-    6. If original version was incorrect, and modified is correct, then it was grammar change.
+    4. Ignore spelling errors (they are analyzed using other method).
+    5. If both are correct, it may be rephrasing or topic changes.
+    6. If both are incorrect or correct sentence was turned into incorrect, no decision can be made.
+    7. If original version was incorrect, and modified is correct, then it was grammar change.
     */
     protected static int isGrammar(Change changed_sent) {
         ArrayList<Change> localChanges = ChangeDetector.getChanges(changed_sent.getBefore(), changed_sent.getAfter());
@@ -301,10 +266,11 @@ public class ChangeAnalyzer {
         for (Change c : localChanges) {
             cond1 = isCitation(c);
             cond2 = isFormatting(c, changed_sent.getBefore(), changed_sent.getAfter());
-            cond3 = isSpelling(c) != 0;
             cond4 = LP.isNumber(c.getBefore()) || LP.isSymbol(c.getBefore());
             cond5 = LP.isNumber(c.getAfter()) || LP.isSymbol(c.getAfter());
-            cond6 = substitutionSimilarity(c) >= 0;
+            Change cw = ChangeDetector.extendChange(c, changed_sent.getBefore(), changed_sent.getAfter(), 1);
+            cond3 = isSpelling(cw) == 1;
+            cond6 = substitutionSimilarity(cw) != -1;
             other = cond1 || cond2 || cond3 || (cond4 && cond5) || cond6;
         }
         if (other) {
@@ -317,15 +283,41 @@ public class ChangeAnalyzer {
         if (sentCount1 != 1 || sentCount2 != 1) {
             return -1;
         }
-        // TODO: need a better checker
         String check1 = LP.checkGrammar(changed_sent.getBefore());
         String check2 = LP.checkGrammar(changed_sent.getAfter());
+        if (check1 == null || check2 == null) {
+            return -1;
+        }
         JSONObject grammar1 = new JSONObject(check1);
         JSONObject grammar2 = new JSONObject(check2);
         JSONArray matches1 = (JSONArray) grammar1.get("matches");
         JSONArray matches2 = (JSONArray) grammar2.get("matches");
-        boolean correct_before = matches1.length() == 0;
-        boolean correct_after = matches2.length() == 0;
+        boolean onlyMisspelling = true;
+        for (int i = 0; i < matches1.length(); ++i) {
+            JSONObject match = matches1.getJSONObject(i);
+            JSONObject rule = match.getJSONObject("rule");
+            String issueType = rule.getString("issueType");
+            if (!issueType.equals("misspelling")) {
+                onlyMisspelling = false;
+            }
+        }
+        if (onlyMisspelling) {
+            return -1;
+        }
+        boolean correct_before = matches1.length() == 0 || onlyMisspelling;
+
+        for (int i = 0; i < matches2.length(); ++i) {
+            JSONObject match = matches2.getJSONObject(i);
+            JSONObject rule = match.getJSONObject("rule");
+            String issueType = rule.getString("issueType");
+            if (!issueType.equals("misspelling")) {
+                onlyMisspelling = false;
+            }
+        }
+        if (onlyMisspelling) {
+            return -1;
+        }
+        boolean correct_after = matches2.length() == 0 || onlyMisspelling;
         if (!correct_before && !correct_after) {
             return 0;
         } else if (correct_before && !correct_after) {
@@ -339,79 +331,40 @@ public class ChangeAnalyzer {
 
     /*
     Checks how a change influenced the topic of a text.
-    1. Should be performed only if more than three sentences have been modified.
-    2. Change's importance is calculated in context of modified paragraph or entire text, depending on its size.
-    3. Determine features, which are domains of words from two text fragments.
-    4. Determine two probability distributions.
-    5. Calculate Jensen-Shannon divergence between those distributions.
+    1. Performed if sentences are not grammar correction of paraphrases.
+    2. There should be at least one sentence.
+    3. Extend change to its context (here neighbouring paragraphs).
+    4. Compute Fernando and Stevenson similarity score between text fragments before and after changes.
     */
     protected static int relatedTopics(Change changed_sent, String text) {
+        // things that can't be rephrasing
+        boolean cond1, cond2;
+        cond1 = isRephrasing(changed_sent);
+        cond2 = isGrammar(changed_sent) == 1;
+        boolean other = cond1 || cond2;
+        if (other) {
+            return -1;
+        }
+
         int sentCount1 = LP.numberOfSentences(changed_sent.getBefore());
         int sentCount2 = LP.numberOfSentences(changed_sent.getAfter());
 
         // too short of a change to be something important
-        if (sentCount1 < 3 && sentCount2 < 3) {
+        if (sentCount1 == 0 && sentCount2 == 0) {
             return -1;
         }
 
         // pick text fragments that need to be compared
         String before = "", after = "";
+        int[] para = LP.nearestParagraph(text, changed_sent.getPos1(),
+                changed_sent.getPos1() + changed_sent.getBefore().length());
+        before = text.substring(para[0], para[1]);
+        after = text.substring(para[0], changed_sent.getPos1()) + changed_sent.getAfter()
+                + text.substring(changed_sent.getPos1() + changed_sent.getBefore().length(), para[1]);
 
-        // 1. If only sentences, then check paragraph.
-        // 2. If paragraph, then entire text.
-        int paraCount1 = LP.numberOfParagraphs(changed_sent.getBefore());
-        int paraCount2 = LP.numberOfParagraphs(changed_sent.getAfter());
-
-        if (paraCount1 > 1 || paraCount2 > 1) {
-            before = text;
-            after = text.substring(0, changed_sent.getPos1()) + changed_sent.getAfter()
-                    + text.substring(changed_sent.getPos1() + changed_sent.getBefore().length());
-        } else {
-            int[] para = LP.nearestParagraph(text, changed_sent.getPos1(),
-                    changed_sent.getPos1() + changed_sent.getBefore().length());
-            before = text.substring(para[0], para[1]);
-            after = text.substring(para[0], changed_sent.getPos1()) + changed_sent.getAfter()
-                    + text.substring(changed_sent.getPos1() + changed_sent.getBefore().length(), para[1]);
-            if (before.equals(changed_sent.getBefore())) {
-                before = text;
-                after = text.substring(0, changed_sent.getPos1()) + changed_sent.getAfter()
-                        + text.substring(changed_sent.getPos1() + changed_sent.getBefore().length());
-            }
-
-        }
-
-        ArrayList<String> features = LP.getFeatures(before, after);
-        if (features.isEmpty()) {
-            return -1;
-        }
-
-        Map<String, Double> dist1 = LP.getDistribution(features, before);
-        Map<String, Double> dist2 = LP.getDistribution(features, after);
-
-        boolean emptymap = true;
-        for (double d1 : dist1.values()) {
-            if (d1 != 0.0) {
-                emptymap = false;
-                break;
-            }
-        }
-        if (emptymap) {
-            return -1;
-        }
-
-        emptymap = true;
-        for (double d2 : dist2.values()) {
-            if (d2 != 0.0) {
-                emptymap = false;
-                break;
-            }
-        }
-        if (emptymap) {
-            return -1;
-        }
-
-        double score = LP.jsd(dist1, dist2);
+        double score = LP.semanticSimilarity(before, after);
         return score >= 0.5 ? 0 : 1;
     }
+    // protected methods
 
 }
