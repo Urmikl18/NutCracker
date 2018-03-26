@@ -13,20 +13,19 @@ import ps.utils.Visualizer;
 
 public class Evaluation {
 
-    private static final String[] paths = { "src/test/resources/benchmark/angkorwat_1.txt",
-            "src/test/resources/benchmark/angkorwat_2.txt", "src/test/resources/benchmark/antarctica_1.txt",
-            "src/test/resources/benchmark/antarctica_2.txt", "src/test/resources/benchmark/atheism_1.txt",
-            "src/test/resources/benchmark/atheism_2.txt", "src/test/resources/benchmark/brit_1.txt",
-            "src/test/resources/benchmark/brit_2.txt", "src/test/resources/benchmark/dna_1.txt",
-            "src/test/resources/benchmark/dna_2.txt" };
+    private static final String[] paths = { "angkorwat_1.txt", "angkorwat_2.txt", "antarctica_1.txt",
+            "antarctica_2.txt", "atheism_1.txt", "atheism_2.txt", "brit_1.txt", "brit_2.txt", "dna_1.txt",
+            "dna_2.txt" };
 
     private static void runTest(int testNum) {
         String text1 = "";
         String text2 = "";
         System.out.println("Test " + (testNum + 1) + ": " + paths[2 * testNum]);
         try {
-            text1 = EvalUtils.readFile(paths[2 * testNum]);
-            text2 = EvalUtils.readFile(paths[2 * testNum + 1]);
+            String path1 = Evaluation.class.getClassLoader().getResource(paths[2 * testNum]).getPath();
+            String path2 = Evaluation.class.getClassLoader().getResource(paths[2 * testNum + 1]).getPath();
+            text1 = EvalUtils.readFile(path1);
+            text2 = EvalUtils.readFile(path2);
         } catch (Exception err) {
             System.out.println("Could not read files for evaluation");
             return;
@@ -42,7 +41,7 @@ public class Evaluation {
     }
 
     private static void saveToFile(ArrayList<ChangeTag> alg, int testNum) throws Exception {
-        String csvFile = "src/test/resources/results/total" + testNum + ".csv";
+        String csvFile = "./evaluation" + testNum + ".csv";
         FileWriter writer = new FileWriter(csvFile);
 
         //for header

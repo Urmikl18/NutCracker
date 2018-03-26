@@ -16,8 +16,9 @@ import edu.cmu.lti.ws4j.util.WS4JConfiguration;
 import name.fraser.neil.plaintext.diff_match_patch;
 import name.fraser.neil.plaintext.diff_match_patch.Diff;
 import ps.models.Change;
-import ps.utils.FastTag;
 import ps.utils.LP;
+
+import com.knowledgebooks.nlp.fasttag.FastTag;
 
 /**
  * Class that provides tools for determining change's meaning.

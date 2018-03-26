@@ -21,6 +21,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.knowledgebooks.nlp.fasttag.FastTag;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -36,9 +38,6 @@ import edu.cmu.lti.ws4j.util.WS4JConfiguration;
  * Language processing module.
  */
 public class LP {
-    // Path to dictionary
-    private static final String dict = "../src/main/resources/dictionary/dict60.txt";
-    // private static final String dict = "src/main/resources/dictionary/dict70.txt";
     // Dictionary, imported from resources/dictionary/dict[size].txt
     private static final TreeSet<String> dictionary = new TreeSet<>();
     // WordNet database
@@ -411,6 +410,14 @@ public class LP {
         double[][] W = new JiangConrath(db).getNormalizedSimilarityMatrix(w.toArray(new String[w.size()]),
                 w.toArray(new String[w.size()]));
 
+        for (int i = 0; i < W.length; ++i) {
+            for (int j = 0; j < W[0].length; ++j) {
+                if (W[i][j] < 0.8) {
+                    W[i][j] = 0;
+                }
+            }
+        }
+
         // calculate similarity score
         double sim = LP.fernandoSim(a, b, W);
         return sim;
@@ -449,7 +456,8 @@ public class LP {
 
     // private methods
     private static void fillDictionary() {
-        try (Stream<String> stream = Files.lines(Paths.get(dict))) {
+        URL dict = LP.class.getClassLoader().getResource("dict60.txt");
+        try (Stream<String> stream = Files.lines(Paths.get(dict.getPath()))) {
             stream.forEach(w -> dictionary.add(w.toLowerCase()));
         } catch (IOException e) {
             System.out.println("Can't fill the dictionary");
