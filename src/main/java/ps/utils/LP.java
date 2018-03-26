@@ -8,18 +8,16 @@ import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.knowledgebooks.nlp.fasttag.FastTag;
 
@@ -456,11 +454,16 @@ public class LP {
 
     // private methods
     private static void fillDictionary() {
-        URL dict = LP.class.getClassLoader().getResource("dict60.txt");
-        try (Stream<String> stream = Files.lines(Paths.get(dict.getPath()))) {
-            stream.forEach(w -> dictionary.add(w.toLowerCase()));
-        } catch (IOException e) {
-            System.out.println("Can't fill the dictionary");
+        try {
+            InputStream ins = LP.class.getClassLoader().getResourceAsStream("dict60.txt");
+            Scanner scanner = new Scanner(ins);
+            while (scanner.hasNext()) {
+                String line = scanner.next();
+                dictionary.add(line);
+            }
+            scanner.close();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
