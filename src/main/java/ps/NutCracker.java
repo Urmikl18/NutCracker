@@ -59,7 +59,7 @@ public class NutCracker {
             System.out.println("Usage: java -jar nutcracker.jar -option source1 source2\n"
                     + "\nwhere options include:\n" + "\t -t\t analyze two strings (source1, source2)\n"
                     + "\t -f\t analyze content of two plain text files (source1, source2)\n"
-                    + "\nwhere source1, source2 are either text snippets of paths to the text files to be analyzed.");
+                    + "\nwhere source1, source2 are either text snippets or paths to the text files to be analyzed.");
             return;
         }
 
