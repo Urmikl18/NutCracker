@@ -1,13 +1,12 @@
 # NutCracker
 
 ## Create Executable
-1. Run `mvn package` in `classifier` folder.
-2. Fat JAR is to be found in `target/nutcracker-jar-with-dependencies.jar`.
+1. Run `mvn package` in repository folder.
+2. Fat JAR is to be found under `target/nutcracker-jar-with-dependencies.jar`.
 
 ## Prerequisites
 Before starting the classifier, do the following steps:
-1. Go to `submission/implementation/executables`.
-2. Run `java -cp languagetool-server.jar org.languagetool.server.HTTPServer --port 8081`.
+1. Make sure that an instance of LanguageTool server is running. Info: http://wiki.languagetool.org/http-server.
 
 ## Launch
 1. Compare two strings:
@@ -16,7 +15,7 @@ Before starting the classifier, do the following steps:
       * java -jar nutcracker-jar-with-dependencies.jar -t "The dog sat on the mat" "The mutt sat on the rug"
 2. Compare contents of two plain-text documents:
    * java -jar nutcracker-jar-with-dependencies.jar -f path1 path2
-   * Example (files are included):
+   * Example (files are not included):
       * java -jar nutcracker-jar-with-dependencies.jar -f ../demo/f1_1.txt ../demo/f1_2.txt
 
 ## Visualization
