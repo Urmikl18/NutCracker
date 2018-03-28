@@ -459,7 +459,7 @@ public class LP {
             Scanner scanner = new Scanner(ins);
             while (scanner.hasNext()) {
                 String line = scanner.next();
-                dictionary.add(line);
+                dictionary.add(line.toLowerCase());
             }
             scanner.close();
         } catch (Exception e) {
